@@ -139,6 +139,62 @@ function switchActiveBot(botId) {
   showToast(`Cambiado a bot: ${botId}`);
 }
 
+function openCreateBotModal() {
+  document.getElementById('newBotId').value = '';
+  document.getElementById('newBotName').value = '';
+  document.getElementById('newBotNiche').value = '';
+  document.getElementById('newBotAccessCode').value = '';
+  document.getElementById('createBotError').style.display = 'none';
+  document.getElementById('createBotModal').style.display = 'flex';
+}
+
+function closeCreateBotModal() {
+  document.getElementById('createBotModal').style.display = 'none';
+}
+
+async function submitCreateBot() {
+  const rawId = document.getElementById('newBotId').value.trim();
+  const botId = rawId.toLowerCase().replace(/[^a-z0-9_-]/g, '-');
+  const name = document.getElementById('newBotName').value.trim();
+  const niche = document.getElementById('newBotNiche').value.trim() || 'starter';
+  const accessCode = document.getElementById('newBotAccessCode').value.trim() || 'admin123';
+  const errEl = document.getElementById('createBotError');
+
+  if (!botId) {
+    errEl.textContent = 'Ingresa un ID único para el bot (ej. taller-hidalgo)';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/bots', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        botId,
+        accessCode,
+        config: {
+          bot: { id: botId, name: name || botId, niche },
+          business: { name: name || botId }
+        }
+      })
+    });
+    const data = await res.json();
+    if (data.success) {
+      closeCreateBotModal();
+      showToast(`¡Bot "${name || botId}" creado con éxito! Código: ${accessCode}`);
+      await loadBotsList();
+      switchActiveBot(botId);
+    } else {
+      errEl.textContent = data.error || 'Error al crear bot';
+      errEl.style.display = 'block';
+    }
+  } catch (err) {
+    errEl.textContent = 'Error de conexión con el servidor';
+    errEl.style.display = 'block';
+  }
+}
+
 // ================= 1. OVERVIEW & FLUJO STATS =================
 async function loadOverview() {
   try {

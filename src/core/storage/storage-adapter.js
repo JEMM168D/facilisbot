@@ -51,15 +51,28 @@ class CloudflareStorageAdapter {
     const niche = config.bot?.niche || 'starter';
     const apiProvider = config.llm?.provider || 'gemini';
     const apiKey = config.llm?.geminiApiKey || config.llm?.anthropicApiKey || config.llm?.openaiApiKey || config.llm?.grokApiKey || null;
+    const accessCode = config._accessCode || null;
 
-    await this.db.prepare(`
-      INSERT INTO bots (id, name, niche, config, api_provider, api_key, updated_at) 
-      VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
-      ON CONFLICT(id) DO UPDATE SET 
-        name=excluded.name, niche=excluded.niche, config=excluded.config, 
-        api_provider=excluded.api_provider, api_key=excluded.api_key, 
-        updated_at=datetime('now')
-    `).bind(botId, name, niche, configStr, apiProvider, apiKey).run();
+    if (accessCode) {
+      await this.db.prepare(`
+        INSERT INTO bots (id, name, niche, config, api_provider, api_key, access_code, updated_at) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
+        ON CONFLICT(id) DO UPDATE SET 
+          name=excluded.name, niche=excluded.niche, config=excluded.config, 
+          api_provider=excluded.api_provider, api_key=excluded.api_key,
+          access_code=coalesce(excluded.access_code, bots.access_code),
+          updated_at=datetime('now')
+      `).bind(botId, name, niche, configStr, apiProvider, apiKey, accessCode).run();
+    } else {
+      await this.db.prepare(`
+        INSERT INTO bots (id, name, niche, config, api_provider, api_key, updated_at) 
+        VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+        ON CONFLICT(id) DO UPDATE SET 
+          name=excluded.name, niche=excluded.niche, config=excluded.config, 
+          api_provider=excluded.api_provider, api_key=excluded.api_key, 
+          updated_at=datetime('now')
+      `).bind(botId, name, niche, configStr, apiProvider, apiKey).run();
+    }
   }
 
   async listBots() {

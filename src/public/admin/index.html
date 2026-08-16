@@ -39,6 +39,7 @@
       <select id="botSwitcher" class="form-control" style="font-size: 11px; height: 30px; font-family: var(--font-mono);" onchange="switchActiveBot(this.value)">
         <option value="default">⚡ Bot Principal</option>
       </select>
+      <button class="btn btn-secondary btn-sm" id="btnOpenCreateBot" onclick="openCreateBotModal()" style="width:100%; margin-top:6px; font-size:10px; padding:4px 8px; justify-content:center;">+ Nuevo Bot / Cliente</button>
     </div>
 
     <div class="nav-section-title">INICIO</div>
@@ -854,6 +855,38 @@
     </section>
 
   </main>
+</div>
+
+<!-- Modal Crear Nuevo Bot para Cliente -->
+<div id="createBotModal" class="login-overlay" style="display:none; background: rgba(0,0,0,0.85); z-index: 9999;">
+  <div class="login-card" style="width: 420px; max-width: 90vw;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+      <h3 style="color:var(--text-main); font-size:16px; font-weight:700;">🚀 Crear Bot para Cliente</h3>
+      <button onclick="closeCreateBotModal()" style="background:transparent; border:none; color:var(--text-dim); font-size:18px; cursor:pointer;">✕</button>
+    </div>
+    <div class="form-group">
+      <label>ID Único del Bot (ej. taller-hidalgo, clinica-perez):</label>
+      <input type="text" id="newBotId" class="form-control" placeholder="nombre-del-cliente">
+    </div>
+    <div class="form-group">
+      <label>Nombre del Negocio / Asistente:</label>
+      <input type="text" id="newBotName" class="form-control" placeholder="Taller Mecánico Hidalgo">
+    </div>
+    <div class="form-group">
+      <label>Giro / Nicho Comercial:</label>
+      <input type="text" id="newBotNiche" class="form-control" placeholder="Taller Automotriz, Dental, Inmobiliaria...">
+    </div>
+    <div class="form-group">
+      <label>Código de Acceso / PIN para el Cliente:</label>
+      <input type="text" id="newBotAccessCode" class="form-control" placeholder="taller2026">
+      <small style="color:var(--text-dim); font-size:10px; display:block; margin-top:2px;">Con este código tu cliente iniciará sesión en su propio panel.</small>
+    </div>
+    <div id="createBotError" style="color:var(--accent-red); font-size:12px; margin-bottom:10px; display:none;"></div>
+    <div style="display:flex; gap:10px; margin-top:14px;">
+      <button class="btn btn-secondary" onclick="closeCreateBotModal()" style="flex:1;">Cancelar</button>
+      <button class="btn btn-primary" onclick="submitCreateBot()" style="flex:1;">Crear Bot</button>
+    </div>
+  </div>
 </div>
 
 <!-- Global Toast Notification -->
