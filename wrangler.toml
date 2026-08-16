@@ -11,22 +11,13 @@ directory = "./src/public"
 [[d1_databases]]
 binding = "DB"
 database_name = "facilisbot-db"
-database_id = "LOCAL"  # Replace with actual ID after: npx wrangler d1 create facilisbot-db
+database_id = "320299e2-2627-4cae-875e-0199f08621dd"
 
 # KV Namespace for knowledge base documents
 [[kv_namespaces]]
 binding = "KV"
-id = "LOCAL"  # Replace with actual ID after: npx wrangler kv namespace create KV
+id = "e6c3c39c2bf347af82b381d4513bc4de"
 
 # Public environment variables
 [vars]
 BOT_NAME = "Asistente Virtual"
-
-# Secrets (set via `npx wrangler secret put <NAME>`):
-# - GEMINI_API_KEY
-# - ANTHROPIC_API_KEY
-# - OPENAI_API_KEY
-# - GROK_API_KEY
-# - TELEGRAM_BOT_TOKEN
-# - WHATSAPP_ACCESS_TOKEN
-# - ADMIN_MASTER_PASSWORD
