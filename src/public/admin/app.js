@@ -48,9 +48,9 @@ async function attemptLogin() {
       document.getElementById('loginOverlay').style.display = 'none';
       document.getElementById('appContainer').style.display = 'flex';
       
-      loadBotsList();
-      loadOverview();
-      loadConfig();
+      await loadBotsList();
+      await loadOverview();
+      await loadConfig();
       setupWidgetSnippet();
     } else {
       errorEl.textContent = data.error || 'Código de acceso inválido';
@@ -80,7 +80,6 @@ function navigateTo(tab) {
   const targetView = document.getElementById(`view-${tab}`);
   if (targetView) targetView.classList.add('active');
 
-  // Breadcrumbs
   const breadcrumbMap = {
     'flujo': 'MI AGENTE / FLUJO',
     'resumen': 'INICIO / RESUMEN',
@@ -152,7 +151,7 @@ async function loadOverview() {
     // Flujo Nodes Data
     const totalConvs = m.totalConversations ?? 0;
     const totalMsgs = m.messages24h ?? 0;
-    const model = data.bot?.llmModel || currentConfig?.llm?.model || 'gemini-3.5-flash-lite';
+    const model = data.bot?.llmModel || currentConfig?.llm?.model || 'gemini-2.0-flash';
 
     const flujoConvs = document.getElementById('flujoConvsCount');
     if (flujoConvs) flujoConvs.textContent = `${totalConvs} conversaciones`;
@@ -199,20 +198,19 @@ async function loadOverview() {
   }
 }
 
-// ================= FLOW NODE INTERACTION =================
 function showNodeDetails(nodeType) {
   const details = {
-    'canal': '🌐 Canal de Entrada: Recibe eventos webhook y mensajes del widget web en tiempo real.',
-    'buffer': '☵ Buffer de Mensajes: Agrupa mensajes consecutivos del usuario enviados en una ventana de 15 segundos para dar una sola respuesta coherente.',
-    'agente': '⚙️ Motor de Agente: Orquesta el prompt del sistema, las herramientas de Function Calling y la memoria de contexto en un bucle de máx 6 pasos.',
-    'respuesta': '✉️ Generador de Respuesta: Formatea la respuesta con espaciado natural de 1.8 segundos para una experiencia humana.',
-    'modelo': '🧠 Modelo de IA: Ejecuta Google Gemini 3.5 Flash Lite con inferencia ultra-rápida y soporte multimodal.',
+    'canal': '🌐 Canal de Entrada: Recibe webhooks y mensajes del widget web en tiempo real.',
+    'buffer': '☵ Buffer de Mensajes: Agrupa mensajes consecutivos del usuario en una ventana de 15 segundos.',
+    'agente': '⚙️ Motor de Agente: Orquesta el prompt, herramientas de Function Calling y memoria de contexto en bucle multi-hop.',
+    'respuesta': '✉️ Generador de Respuesta: Formatea la respuesta con espaciado natural de 1.8s.',
+    'modelo': '🧠 Modelo de IA: Inferencia con Google Gemini, Claude, OpenAI o Grok.',
     'memoria': '💾 Memoria en D1: Almacena los últimos 20 mensajes de la conversación en SQLite Edge.',
-    'tool-searchkb': '📖 searchKb: Busca fragmentos relevantes en la Base de Conocimiento mediante BM25/TF-IDF.',
-    'tool-handoff': '👤 handoffHuman: Transfiere a un asesor humano cuando se requiere empatía o resolución compleja.',
-    'tool-pause': '⏸️ pauseBot: Pausa temporalmente las respuestas para atención manual.',
+    'tool-searchkb': '📖 searchKb: Búsqueda RAG en Base de Conocimiento para no inventar precios o servicios.',
+    'tool-handoff': '👤 handoffHuman: Transfiere a un asesor humano con resumen y nivel de urgencia.',
+    'tool-pause': '⏸️ pauseBot: Pausa temporalmente el bot en esta conversación para atención manual.',
     'tool-snooze': '⏰ snoozeUser: Programa seguimiento automático del Cazador de Ventas tras enfriarse el prospecto.',
-    'tool-lead': '🎯 captureLead: Extrae y califica automáticamente nombre, teléfono y necesidad del cliente.'
+    'tool-lead': '🎯 captureLead: Extrae y califica automáticamente nombre, teléfono y necesidad del cliente en CRM.'
   };
 
   showToast(details[nodeType] || 'Nodo activo del agente');
@@ -355,7 +353,7 @@ async function loadLeads() {
   }
 }
 
-// ================= 4. TICKETS (Escalated Handoffs) =================
+// ================= 4. TICKETS =================
 async function loadTickets() {
   try {
     const res = await fetch(`/api/conversations?status=escalated&bot_id=${encodeURIComponent(currentBotId)}`);
@@ -565,7 +563,7 @@ async function saveTelegramChannel() {
   showToast('Conexión de Telegram guardada');
 }
 
-// ================= 8. SIMULATOR =================
+// ================= 8. SIMULATOR (Live Testing & Tool Calling) =================
 async function sendSimMessage() {
   const input = document.getElementById('simInput');
   const text = input.value.trim();
@@ -573,11 +571,20 @@ async function sendSimMessage() {
 
   const msgContainer = document.getElementById('simMessages');
 
+  // Add User bubble
   const userBubble = document.createElement('div');
   userBubble.className = 'msg-bubble msg-user';
   userBubble.textContent = text;
   msgContainer.appendChild(userBubble);
   input.value = '';
+  msgContainer.scrollTop = msgContainer.scrollHeight;
+
+  // Add temporary typing indicator
+  const typingBubble = document.createElement('div');
+  typingBubble.className = 'msg-bubble msg-bot';
+  typingBubble.id = 'simTyping';
+  typingBubble.innerHTML = '<span style="opacity:0.6; font-style:italic;">⚡ Pensando y procesando herramientas...</span>';
+  msgContainer.appendChild(typingBubble);
   msgContainer.scrollTop = msgContainer.scrollHeight;
 
   try {
@@ -588,23 +595,63 @@ async function sendSimMessage() {
     });
     const data = await res.json();
 
+    const typingEl = document.getElementById('simTyping');
+    if (typingEl) typingEl.remove();
+
+    // Render Bot Reply
     const botBubble = document.createElement('div');
     botBubble.className = 'msg-bubble msg-bot';
+    
+    let toolsHtml = '';
+    if (data.tools && data.tools.length > 0) {
+      toolsHtml = `
+        <div style="margin-top:8px; padding-top:6px; border-top:1px dashed var(--border-color); font-family:var(--font-mono); font-size:11px;">
+          <div style="color:var(--accent-gold); font-weight:700; margin-bottom:4px;">⚡ HERRAMIENTAS DISPARADAS:</div>
+          ${data.tools.map(t => `
+            <div style="background:#0a0806; padding:6px 8px; border-radius:6px; margin-bottom:4px; border:1px solid #29221b;">
+              <span style="color:var(--accent-green); font-weight:600;">🛠️ ${escapeHtml(t.name)}</span>
+              <div style="color:var(--text-dim); font-size:10px;">Args: ${escapeHtml(JSON.stringify(t.args))}</div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+
     botBubble.innerHTML = `
-      <div>${escapeHtml(data.reply)}</div>
-      ${data.tools ? `<div style="font-size:10px; color:var(--accent-gold); margin-top:6px; font-family:var(--font-mono);">⚡ Herramientas: ${data.tools.map(t => t.name).join(', ')}</div>` : ''}
+      <div>${escapeHtml(data.reply || data.content)}</div>
+      ${toolsHtml}
     `;
     msgContainer.appendChild(botBubble);
     msgContainer.scrollTop = msgContainer.scrollHeight;
 
-    document.getElementById('simProviderTag').textContent = data.provider || 'gemini';
-    document.getElementById('simModelTag').textContent = data.model || 'gemini-3.5-flash-lite';
+    // Update Execution Inspector
+    document.getElementById('simProviderTag').textContent = (data.provider || currentConfig?.llm?.provider || 'gemini').toUpperCase();
+    document.getElementById('simModelTag').textContent = data.model || currentConfig?.llm?.model || 'gemini-2.0-flash';
     document.getElementById('simTokensTag').textContent = `${data.tokensUsed || 0} tokens`;
-    document.getElementById('simToolInspector').textContent = data.tools
-      ? JSON.stringify(data.tools, null, 2)
-      : '[Ninguna herramienta disparada en este turno]';
+    
+    const inspectorEl = document.getElementById('simToolInspector');
+    if (data.tools && data.tools.length > 0) {
+      inspectorEl.textContent = JSON.stringify(data.tools, null, 2);
+      inspectorEl.style.color = '#4ade80';
+    } else {
+      inspectorEl.textContent = '[Ninguna herramienta disparada en este turno. Respuesta directa del modelo.]';
+      inspectorEl.style.color = '#9e9185';
+    }
+
+    // If a lead was captured, auto-refresh CRM
+    if (data.tools && data.tools.some(t => t.name === 'capture_lead')) {
+      showToast('🎯 ¡Prospecto detectado y guardado en CRM!');
+    }
+
   } catch (err) {
-    console.error('Error en simulador:', err);
+    const typingEl = document.getElementById('simTyping');
+    if (typingEl) typingEl.remove();
+
+    const errBubble = document.createElement('div');
+    errBubble.className = 'msg-bubble msg-bot';
+    errBubble.style.borderColor = 'var(--accent-red)';
+    errBubble.innerHTML = `<span style="color:var(--accent-red);">❌ Error: ${escapeHtml(err.message)}</span>`;
+    msgContainer.appendChild(errBubble);
   }
 }
 
@@ -614,9 +661,25 @@ function clearSimulatorChat() {
       ¡Hola! Soy tu asistente en modo simulador para el bot: <strong>${escapeHtml(currentBotId)}</strong>.
     </div>
   `;
+  document.getElementById('simToolInspector').textContent = '[Ninguna todavía]';
 }
 
-// ================= 9. SETTINGS & API TEST =================
+// ================= 9. SETTINGS & DYNAMIC MODEL SELECTION =================
+function onProviderChange(provider) {
+  const modelInput = document.getElementById('cfgLlmModel');
+  const keyInput = document.getElementById('cfgLlmApiKey');
+  const defaults = {
+    'gemini': 'gemini-2.0-flash',
+    'anthropic': 'claude-3-5-sonnet-20241022',
+    'openai': 'gpt-4o-mini',
+    'grok': 'grok-2-latest',
+    'mock': 'simulador-offline'
+  };
+
+  modelInput.value = defaults[provider] || 'gemini-2.0-flash';
+  keyInput.placeholder = `Pega tu API Key de ${provider.toUpperCase()}...`;
+}
+
 async function loadConfig() {
   try {
     const res = await fetch(`/api/config?bot_id=${encodeURIComponent(currentBotId)}`);
@@ -625,8 +688,21 @@ async function loadConfig() {
     document.getElementById('cfgBotName').value = currentConfig.bot?.name || '';
     document.getElementById('cfgBotNiche').value = currentConfig.bot?.niche || 'starter';
     document.getElementById('cfgLlmProvider').value = currentConfig.llm?.provider || 'gemini';
-    document.getElementById('cfgLlmModel').value = currentConfig.llm?.model || '';
+    document.getElementById('cfgLlmModel').value = currentConfig.llm?.model || 'gemini-2.0-flash';
     document.getElementById('cfgBotPersonality').value = currentConfig.bot?.personality || '';
+
+    // If API key exists, show placeholder indicator
+    const keyInput = document.getElementById('cfgLlmApiKey');
+    const prov = currentConfig.llm?.provider || 'gemini';
+    const hasKey = currentConfig.llm?.geminiApiKey || currentConfig.llm?.anthropicApiKey || currentConfig.llm?.openaiApiKey || currentConfig.llm?.grokApiKey;
+    
+    if (hasKey) {
+      keyInput.placeholder = '•••••••••••••••• (API Key Guardada en D1)';
+      keyInput.value = '';
+    } else {
+      keyInput.placeholder = `Pega tu API Key de ${prov.toUpperCase()}...`;
+      keyInput.value = '';
+    }
 
     document.getElementById('cfgBizName').value = currentConfig.business?.name || '';
     document.getElementById('cfgBizServices').value = currentConfig.business?.services || '';
@@ -643,15 +719,18 @@ async function loadConfig() {
 }
 
 async function saveAllSettings() {
+  const prov = document.getElementById('cfgLlmProvider').value;
+  const newModel = document.getElementById('cfgLlmModel').value || (prov === 'gemini' ? 'gemini-2.0-flash' : 'gpt-4o-mini');
+
   const newConfig = {
     bot: {
-      ...currentConfig.bot,
+      ...(currentConfig?.bot || {}),
       name: document.getElementById('cfgBotName').value,
       niche: document.getElementById('cfgBotNiche').value,
       personality: document.getElementById('cfgBotPersonality').value
     },
     business: {
-      ...currentConfig.business,
+      ...(currentConfig?.business || {}),
       name: document.getElementById('cfgBizName').value,
       services: document.getElementById('cfgBizServices').value,
       hours: document.getElementById('cfgBizHours').value,
@@ -660,15 +739,14 @@ async function saveAllSettings() {
       email: document.getElementById('cfgBizEmail').value
     },
     llm: {
-      ...currentConfig.llm,
-      provider: document.getElementById('cfgLlmProvider').value,
-      model: document.getElementById('cfgLlmModel').value
+      ...(currentConfig?.llm || {}),
+      provider: prov,
+      model: newModel
     }
   };
 
   const apiKeyInput = document.getElementById('cfgLlmApiKey').value.trim();
   if (apiKeyInput && !apiKeyInput.includes('••••')) {
-    const prov = newConfig.llm.provider;
     if (prov === 'gemini') newConfig.llm.geminiApiKey = apiKeyInput;
     if (prov === 'anthropic') newConfig.llm.anthropicApiKey = apiKeyInput;
     if (prov === 'openai') newConfig.llm.openaiApiKey = apiKeyInput;
@@ -676,15 +754,23 @@ async function saveAllSettings() {
   }
 
   try {
-    await fetch(`/api/config?bot_id=${encodeURIComponent(currentBotId)}`, {
+    const res = await fetch(`/api/config?bot_id=${encodeURIComponent(currentBotId)}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newConfig)
     });
-    showToast('Configuración guardada exitosamente');
-    loadOverview();
+    const data = await res.json();
+    
+    if (data.success) {
+      showToast('✅ Configuración e Inteligencia Artificial guardadas');
+      await loadConfig();
+      await loadOverview();
+    } else {
+      showToast('❌ Error guardando configuración');
+    }
   } catch (err) {
     console.error('Error guardando configuración:', err);
+    showToast('❌ Error de conexión al guardar');
   }
 }
 
@@ -703,18 +789,26 @@ async function updateConfigSection(section, data) {
 
 async function testApiConnection() {
   const provider = document.getElementById('cfgLlmProvider').value;
-  const apiKey = document.getElementById('cfgLlmApiKey').value.trim();
+  let apiKey = document.getElementById('cfgLlmApiKey').value.trim();
   const resultEl = document.getElementById('apiKeyTestResult');
   const btn = document.getElementById('btnTestConnection');
 
+  // If user didn't type a new key, try to use the existing key from config
   if (!apiKey || apiKey.includes('••••')) {
-    resultEl.textContent = '⚠️ Ingresa tu API key para probar';
+    const existingKey = currentConfig?.llm?.[`${provider}ApiKey`];
+    if (existingKey && !existingKey.includes('••••')) {
+      apiKey = existingKey;
+    }
+  }
+
+  if (!apiKey) {
+    resultEl.textContent = '⚠️ Ingresa tu API Key para probarla';
     resultEl.style.color = '#ffaa00';
     return;
   }
 
   btn.disabled = true;
-  btn.textContent = '⏳ Probando...';
+  btn.textContent = '⏳ Probando en vivo...';
   resultEl.textContent = '';
 
   try {
@@ -729,7 +823,7 @@ async function testApiConnection() {
       resultEl.textContent = '✅ ' + data.message;
       resultEl.style.color = '#4ade80';
     } else {
-      resultEl.textContent = '❌ ' + (data.error || 'Error de conexión');
+      resultEl.textContent = '❌ ' + (data.error || 'Clave rechazada por el proveedor');
       resultEl.style.color = '#f87171';
     }
   } catch (err) {

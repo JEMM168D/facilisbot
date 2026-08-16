@@ -789,21 +789,21 @@
           <h3 class="panel-title">🤖 Inteligencia Artificial & API Keys</h3>
           <div class="form-group">
             <label>Proveedor de IA:</label>
-            <select id="cfgLlmProvider" class="form-control">
-              <option value="gemini">Google Gemini 3.5 Flash Lite (Recomendado · Ultrarrápido y Económico)</option>
-              <option value="anthropic">Anthropic Claude (Claude Sonnet 5 / Opus 5)</option>
-              <option value="openai">OpenAI (GPT-5.6 Luna / Terra)</option>
-              <option value="grok">xAI Grok (Grok 4.6)</option>
-              <option value="mock">Simulador Offline (Sin API Key)</option>
+            <select id="cfgLlmProvider" class="form-control" onchange="onProviderChange(this.value)">
+              <option value="gemini">Google Gemini (Recomendado · gemini-2.0-flash / gemini-1.5-flash)</option>
+              <option value="anthropic">Anthropic Claude (claude-3-5-sonnet-20241022)</option>
+              <option value="openai">OpenAI (gpt-4o-mini / gpt-4o)</option>
+              <option value="grok">xAI Grok (grok-2-latest)</option>
+              <option value="mock">Simulador Inteligente (Sin API Key)</option>
             </select>
           </div>
           <div class="form-group">
             <label>Modelo:</label>
-            <input type="text" id="cfgLlmModel" class="form-control" placeholder="gemini-3.5-flash-lite">
+            <input type="text" id="cfgLlmModel" class="form-control" placeholder="gemini-2.0-flash">
           </div>
           <div class="form-group">
             <label>API Key del Proveedor:</label>
-            <input type="password" id="cfgLlmApiKey" class="form-control" placeholder="Pega tu clave de Gemini, Claude, OpenAI o Grok...">
+            <input type="password" id="cfgLlmApiKey" class="form-control" placeholder="Pega tu API Key de Gemini, Claude u OpenAI...">
             <div style="display:flex; gap:8px; margin-top:6px;">
               <button class="btn btn-secondary btn-sm" onclick="testApiConnection()" id="btnTestConnection">🔌 Probar Conexión</button>
               <span id="apiKeyTestResult" style="font-size:12px; line-height:30px;"></span>

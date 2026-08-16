@@ -9,7 +9,7 @@
  */
 import { createStorageAdapter } from './core/storage/storage-adapter.js';
 import { loadConfig, DEFAULT_CONFIG } from './core/config.js';
-import { getBotEngine } from './core/engine.js';
+import { getBotEngine, clearEngineCache } from './core/engine.js';
 import { getKnowledgeBase } from './core/knowledge/search.js';
 import { WhatsAppHandler } from './core/channels/whatsapp.js';
 import { TelegramHandler } from './core/channels/telegram.js';
@@ -163,46 +163,62 @@ export default {
       }
 
       // ══════════════════════════════════════════════════
-      // TEST CONNECTION (verify API key works)
+      // TEST CONNECTION (verify API key works in real-time)
       // ══════════════════════════════════════════════════
       if (pathname === '/api/test/connection' && request.method === 'POST') {
         const body = await request.json();
         const provider = body.provider || 'gemini';
-        const apiKey = body.apiKey || '';
+        const apiKey = (body.apiKey || '').trim();
         
         if (!apiKey) return json({ success: false, error: 'API key requerida' }, 400);
 
         try {
-          let testUrl = '';
-          let testHeaders = {};
-          let testBody = '';
-
           if (provider === 'gemini') {
-            testUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`;
-            const res = await fetch(testUrl);
-            if (!res.ok) throw new Error(`Gemini respondió ${res.status}`);
-            return json({ success: true, provider, message: 'Conexión exitosa con Google Gemini' });
+            const testUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+            const res = await fetch(testUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ contents: [{ parts: [{ text: 'Hola' }] }] })
+            });
+            if (!res.ok) {
+              const err = await res.json().catch(() => ({}));
+              throw new Error(err.error?.message || `Gemini respondió con error ${res.status}`);
+            }
+            return json({ success: true, provider, message: 'Conexión exitosa con Google Gemini (gemini-2.0-flash activo)' });
           } else if (provider === 'anthropic') {
-            testUrl = 'https://api.anthropic.com/v1/messages';
+            const testUrl = 'https://api.anthropic.com/v1/messages';
             const res = await fetch(testUrl, {
               method: 'POST',
               headers: { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' },
-              body: JSON.stringify({ model: 'claude-sonnet-5', messages: [{ role: 'user', content: 'test' }], max_tokens: 5 })
+              body: JSON.stringify({ model: 'claude-3-5-sonnet-20241022', messages: [{ role: 'user', content: 'hi' }], max_tokens: 1 })
             });
-            if (res.status === 401) throw new Error('API key inválida');
+            if (!res.ok) {
+              const err = await res.json().catch(() => ({}));
+              throw new Error(err.error?.message || `Anthropic respondió con error ${res.status}`);
+            }
             return json({ success: true, provider, message: 'Conexión exitosa con Anthropic Claude' });
           } else if (provider === 'openai') {
-            const res = await fetch('https://api.openai.com/v1/models', {
-              headers: { 'Authorization': `Bearer ${apiKey}` }
+            const res = await fetch('https://api.openai.com/v1/chat/completions', {
+              method: 'POST',
+              headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+              body: JSON.stringify({ model: 'gpt-4o-mini', messages: [{ role: 'user', content: 'hi' }], max_tokens: 1 })
             });
-            if (!res.ok) throw new Error(`OpenAI respondió ${res.status}`);
-            return json({ success: true, provider, message: 'Conexión exitosa con OpenAI' });
+            if (!res.ok) {
+              const err = await res.json().catch(() => ({}));
+              throw new Error(err.error?.message || `OpenAI respondió con error ${res.status}`);
+            }
+            return json({ success: true, provider, message: 'Conexión exitosa con OpenAI (gpt-4o-mini)' });
           } else if (provider === 'grok') {
-            const res = await fetch('https://api.x.ai/v1/models', {
-              headers: { 'Authorization': `Bearer ${apiKey}` }
+            const res = await fetch('https://api.x.ai/v1/chat/completions', {
+              method: 'POST',
+              headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+              body: JSON.stringify({ model: 'grok-2-latest', messages: [{ role: 'user', content: 'hi' }], max_tokens: 1 })
             });
-            if (!res.ok) throw new Error(`Grok respondió ${res.status}`);
-            return json({ success: true, provider, message: 'Conexión exitosa con xAI Grok' });
+            if (!res.ok) {
+              const err = await res.json().catch(() => ({}));
+              throw new Error(err.error?.message || `Grok respondió con error ${res.status}`);
+            }
+            return json({ success: true, provider, message: 'Conexión exitosa con xAI Grok (grok-2-latest)' });
           }
           
           return json({ success: false, error: 'Proveedor no soportado' }, 400);
@@ -372,8 +388,7 @@ export default {
         await storage.saveConfig(reqBotId, botCfg);
         
         // Invalidate cached engine for this bot
-        const engineRegistry = globalThis.__facilisbot_engines;
-        if (engineRegistry) engineRegistry.delete(reqBotId);
+        clearEngineCache(reqBotId);
         
         return json({ success: true });
       }

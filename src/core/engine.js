@@ -161,8 +161,11 @@ const engineRegistry = new Map();
 /**
  * Get or instantiate BotEngine for a specific botId
  */
-export async function getBotEngine(botId = 'default', storage) {
+export async function getBotEngine(botId = 'default', storage, forceReload = false) {
   const cleanId = botId || 'default';
+  if (forceReload) {
+    engineRegistry.delete(cleanId);
+  }
   if (engineRegistry.has(cleanId)) {
     return engineRegistry.get(cleanId);
   }
@@ -176,3 +179,15 @@ export async function getBotEngine(botId = 'default', storage) {
     throw err;
   }
 }
+
+/**
+ * Invalidate cached BotEngine instance when config or KB updates
+ */
+export function clearEngineCache(botId = null) {
+  if (botId) {
+    engineRegistry.delete(botId);
+  } else {
+    engineRegistry.clear();
+  }
+}
+

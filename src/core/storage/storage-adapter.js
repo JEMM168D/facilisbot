@@ -28,10 +28,18 @@ class CloudflareStorageAdapter {
   // --- Bot Config ---
 
   async getConfig(botId) {
-    const result = await this.db.prepare('SELECT config FROM bots WHERE id = ?').bind(botId).first();
+    const result = await this.db.prepare('SELECT config, api_provider, api_key FROM bots WHERE id = ?').bind(botId).first();
     if (!result || !result.config) return null;
     try {
-      return JSON.parse(result.config);
+      const cfg = JSON.parse(result.config);
+      if (result.api_key && cfg.llm) {
+        const prov = result.api_provider || cfg.llm.provider || 'gemini';
+        if (prov === 'gemini' && !cfg.llm.geminiApiKey) cfg.llm.geminiApiKey = result.api_key;
+        if (prov === 'anthropic' && !cfg.llm.anthropicApiKey) cfg.llm.anthropicApiKey = result.api_key;
+        if (prov === 'openai' && !cfg.llm.openaiApiKey) cfg.llm.openaiApiKey = result.api_key;
+        if (prov === 'grok' && !cfg.llm.grokApiKey) cfg.llm.grokApiKey = result.api_key;
+      }
+      return cfg;
     } catch (e) {
       return null;
     }
