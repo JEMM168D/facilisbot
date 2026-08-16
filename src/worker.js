@@ -352,6 +352,154 @@ export default {
         return json({ success: deleted });
       }
 
+      // Auto-Scraper Web para Base de Conocimiento
+      if (pathname === '/api/kb/scrape' && request.method === 'POST') {
+        const body = await request.json();
+        let targetUrl = (body.url || '').trim();
+        if (!targetUrl) return json({ error: 'URL requerida' }, 400);
+        if (!targetUrl.startsWith('http://') && !targetUrl.startsWith('https://')) {
+          targetUrl = 'https://' + targetUrl;
+        }
+
+        try {
+          const res = await fetch(targetUrl, {
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 FacilisBot/2.0'
+            }
+          });
+
+          if (!res.ok) throw new Error(`El sitio web respondió con error HTTP ${res.status}`);
+          const html = await res.text();
+
+          // HTML parser & extractor
+          const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+          const metaDescMatch = html.match(/<meta[^>]*name=["']description["'][^>]*content=["']([^"']*)["']/i);
+          const title = titleMatch ? titleMatch[1].trim() : targetUrl;
+          const metaDesc = metaDescMatch ? metaDescMatch[1].trim() : '';
+
+          // Remove script, style, svg, nav, footer tags
+          let cleanText = html
+            .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, ' ')
+            .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, ' ')
+            .replace(/<svg\b[^<]*(?:(?!<\/svg>)<[^<]*)*<\/svg>/gi, ' ')
+            .replace(/<nav\b[^<]*(?:(?!<\/nav>)<[^<]*)*<\/nav>/gi, ' ')
+            .replace(/<footer\b[^<]*(?:(?!<\/footer>)<[^<]*)*<\/footer>/gi, ' ')
+            .replace(/<header\b[^<]*(?:(?!<\/header>)<[^<]*)*<\/header>/gi, ' ')
+            .replace(/<noscript\b[^<]*(?:(?!<\/noscript>)<[^<]*)*<\/noscript>/gi, ' ');
+
+          // Convert headings and paragraphs to markdown
+          cleanText = cleanText
+            .replace(/<h1[^>]*>([^<]+)<\/h1>/gi, '\n\n# $1\n\n')
+            .replace(/<h2[^>]*>([^<]+)<\/h2>/gi, '\n\n## $1\n\n')
+            .replace(/<h3[^>]*>([^<]+)<\/h3>/gi, '\n\n### $1\n\n')
+            .replace(/<li[^>]*>([^<]+)<\/li>/gi, '\n- $1')
+            .replace(/<p[^>]*>([^<]+)<\/p>/gi, '\n$1\n')
+            .replace(/<br\s*[\/]?>/gi, '\n')
+            .replace(/<[^>]+>/g, ' ') // Strip remaining tags
+            .replace(/&nbsp;/g, ' ')
+            .replace(/&amp;/g, '&')
+            .replace(/&quot;/g, '"')
+            .replace(/&#39;/g, "'")
+            .replace(/\s+/g, ' ')
+            .replace(/\n\s+\n/g, '\n\n')
+            .trim();
+
+          // Limit length to avoid blowing up context
+          const maxLen = 8000;
+          const trimmedContent = cleanText.length > maxLen ? cleanText.slice(0, maxLen) + '...\n\n[Contenido truncado]' : cleanText;
+
+          const markdown = `# Información Extraída de ${title}
+**Fuente:** ${targetUrl}
+**Descripción:** ${metaDesc || 'Sin descripción meta'}
+
+---
+
+## Contenido del Sitio Web
+${trimmedContent}
+`;
+
+          const filename = 'web_' + new URL(targetUrl).hostname.replace(/[^a-zA-Z0-9]/g, '_') + '.md';
+          const currentKb = await getKnowledgeBase(reqBotId, storage);
+          await currentKb.saveDocument(reqBotId, filename, markdown, storage);
+          clearEngineCache(reqBotId);
+
+          return json({
+            success: true,
+            filename,
+            title,
+            length: markdown.length,
+            preview: markdown.slice(0, 400) + '...'
+          });
+        } catch (err) {
+          return json({ success: false, error: 'Error al escanear la página: ' + err.message }, 400);
+        }
+      }
+
+      // Entrevista Interactiva Asistida (Paso a Paso de KB)
+      if (pathname === '/api/kb/interview/step' && request.method === 'POST') {
+        const body = await request.json();
+        const step = body.step || 1;
+        const answers = body.answers || {};
+
+        const sections = [
+          {
+            step: 1,
+            name: 'perfil_ubicacion.md',
+            title: '1. Perfil y Ubicación del Negocio',
+            format: (a) => `# Perfil y Ubicación\n- **Nombre del Negocio:** ${a.businessName || ''}\n- **Giro o Especialidad:** ${a.niche || ''}\n- **Ubicación / Modalidad:** ${a.location || 'Presencial y Online'}\n- **Zona o Cobertura:** ${a.coverage || 'Local y Nacional'}\n- **Contacto:** Tel: ${a.phone || ''} | Correo: ${a.email || ''}`
+          },
+          {
+            step: 2,
+            name: 'horarios_atencion.md',
+            title: '2. Horarios y Canales de Atención',
+            format: (a) => `# Horarios de Atención\n- **Horario Habitual:** ${a.hours || 'Lunes a Viernes de 9:00 AM a 6:00 PM'}\n- **Fin de Semana:** ${a.weekendHours || 'Sábados de 9:00 AM a 2:00 PM'}\n- **Tiempo Estimado de Respuesta:** ${a.responseTime || 'Inmediato por bot / Menos de 15 min con asesor humano'}`
+          },
+          {
+            step: 3,
+            name: 'servicios_productos.md',
+            title: '3. Servicios y Catálogo de Productos',
+            format: (a) => `# Servicios y Productos\n${a.servicesText || 'Descripción detallada de los servicios principales y paquetes ofrecidos.'}`
+          },
+          {
+            step: 4,
+            name: 'precios_pagos.md',
+            title: '4. Precios, Cotizaciones y Pagos',
+            format: (a) => `# Precios y Métodos de Pago\n- **Rango o Precios Base:** ${a.pricingText || 'Cotizaciones personalizadas según requerimiento'}\n- **Métodos de Pago Aceptados:** ${a.paymentMethods || 'Transferencia, Tarjeta (Stripe), Efectivo'}\n- **Política de Anticipos:** ${a.depositPolicy || 'Se requiere 50% de anticipo para iniciar'}`
+          },
+          {
+            step: 5,
+            name: 'politicas_garantias.md',
+            title: '5. Políticas y Garantías',
+            format: (a) => `# Políticas y Garantías\n- **Garantía:** ${a.warranty || 'Garantía total de satisfacción'}\n- **Cancelaciones y Reembolsos:** ${a.refundPolicy || 'Avisar con al menos 24 horas de anticipación'}\n- **Facturación:** ${a.billingPolicy || 'Facturamos todos los servicios (solicitar con CSF al pagar)'}`
+          },
+          {
+            step: 6,
+            name: 'preguntas_frecuentes.md',
+            title: '6. Preguntas Frecuentes (FAQ)',
+            format: (a) => `# Preguntas Frecuentes\n${a.faqText || 'Preguntas y respuestas más habituales de los clientes.'}`
+          }
+        ];
+
+        const targetSection = sections.find(s => s.step === step);
+        if (targetSection) {
+          const markdown = targetSection.format(answers);
+          const currentKb = await getKnowledgeBase(reqBotId, storage);
+          await currentKb.saveDocument(reqBotId, targetSection.name, markdown, storage);
+          clearEngineCache(reqBotId);
+        }
+
+        const isFinished = step >= 6;
+        return json({
+          success: true,
+          savedSection: targetSection ? targetSection.name : null,
+          nextStep: isFinished ? null : step + 1,
+          isFinished,
+          message: isFinished 
+            ? '¡Excelente! Tu Base de Conocimiento ya tiene todo lo esencial configurado y listo para operar.'
+            : `Sección ${step} guardada e indexada con éxito en la Base de Conocimiento.`
+        });
+      }
+
       // ══════════════════════════════════════════════════
       // 12 SUPERPOWERS & ANALYTICS APIs
       // ══════════════════════════════════════════════════

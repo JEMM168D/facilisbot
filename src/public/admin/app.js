@@ -1218,6 +1218,292 @@ async function saveReviewUrl() {
   closeSuperpowerModal();
 }
 
+// ================= 11. WEB SCRAPER (Auto-importación desde Sitio Web) =================
+function openWebScraperModal() {
+  document.getElementById('scraperUrlInput').value = '';
+  document.getElementById('scraperProgress').style.display = 'none';
+  document.getElementById('scraperResultPreview').style.display = 'none';
+  document.getElementById('webScraperModal').style.display = 'flex';
+}
+
+function closeWebScraperModal() {
+  document.getElementById('webScraperModal').style.display = 'none';
+}
+
+async function runWebScraper() {
+  const urlInput = document.getElementById('scraperUrlInput').value.trim();
+  const progressEl = document.getElementById('scraperProgress');
+  const previewEl = document.getElementById('scraperResultPreview');
+  const btn = document.getElementById('btnRunScraper');
+
+  if (!urlInput) {
+    showToast('⚠️ Ingresa la URL de tu página web');
+    return;
+  }
+
+  btn.disabled = true;
+  progressEl.style.display = 'block';
+  previewEl.style.display = 'none';
+
+  try {
+    const res = await fetch('/api/kb/scrape', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: urlInput, botId: currentBotId })
+    });
+    const data = await res.json();
+
+    if (data.success) {
+      progressEl.style.display = 'none';
+      previewEl.style.display = 'block';
+      previewEl.textContent = `✅ Documento creado: ${data.filename}\n\n${data.preview}`;
+      showToast(`¡Página escaneada con éxito! Documento: ${data.filename}`);
+      await loadKbFiles();
+      setTimeout(() => {
+        closeWebScraperModal();
+        openKbDocument(data.filename);
+      }, 1500);
+    } else {
+      progressEl.style.display = 'none';
+      previewEl.style.display = 'block';
+      previewEl.textContent = `❌ Error: ${data.error || 'No se pudo escanear el sitio'}`;
+      previewEl.style.color = 'var(--accent-red)';
+    }
+  } catch (err) {
+    progressEl.style.display = 'none';
+    previewEl.style.display = 'block';
+    previewEl.textContent = `❌ Error de conexión: ${err.message}`;
+    previewEl.style.color = 'var(--accent-red)';
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// ================= 12. ENTREVISTA ASISTIDA POR IA (Llenar KB) =================
+let currentInterviewStep = 1;
+const interviewAnswers = {};
+
+function openInterviewWizard() {
+  currentInterviewStep = 1;
+  document.getElementById('interviewModal').style.display = 'flex';
+  renderInterviewStep(currentInterviewStep);
+}
+
+function closeInterviewWizard() {
+  document.getElementById('interviewModal').style.display = 'none';
+}
+
+function renderInterviewStep(step) {
+  const badgeEl = document.getElementById('interviewStepBadge');
+  const bodyEl = document.getElementById('interviewStepBody');
+  const prevBtn = document.getElementById('btnInterviewPrev');
+  const nextBtn = document.getElementById('btnInterviewNext');
+  const statusMsg = document.getElementById('interviewStatusMsg');
+
+  badgeEl.textContent = `Paso ${step} de 6`;
+  prevBtn.style.visibility = step > 1 ? 'visible' : 'hidden';
+  nextBtn.textContent = step === 6 ? 'Finalizar Entrevista ✅' : 'Guardar y Siguiente →';
+  statusMsg.style.display = 'none';
+
+  switch (step) {
+    case 1:
+      bodyEl.innerHTML = `
+        <h4 style="color:var(--text-main); font-size:14px; margin-bottom:6px;">🏢 1. Perfil y Ubicación del Negocio</h4>
+        <p style="font-size:12px; color:var(--text-dim); margin-bottom:12px;">Dime el nombre de tu empresa, tu giro principal y dónde te ubicas.</p>
+        <div class="form-group">
+          <label>Nombre de la Empresa:</label>
+          <input type="text" id="ivBizName" class="form-control" placeholder="ej. Taller Mecánico Hidalgo" value="${interviewAnswers.businessName || currentConfig?.business?.name || ''}">
+        </div>
+        <div class="form-group">
+          <label>Giro o Especialidad:</label>
+          <input type="text" id="ivNiche" class="form-control" placeholder="ej. Taller automotriz especializado en frenos y suspensión" value="${interviewAnswers.niche || currentConfig?.bot?.niche || ''}">
+        </div>
+        <div class="form-group">
+          <label>Ubicación / Modalidad:</label>
+          <input type="text" id="ivLocation" class="form-control" placeholder="ej. Av. Hidalgo #123, Col. Centro / Atención presencial y citas a domicilio" value="${interviewAnswers.location || currentConfig?.business?.location || ''}">
+        </div>
+        <div class="form-group">
+          <label>Zona de Cobertura:</label>
+          <input type="text" id="ivCoverage" class="form-control" placeholder="ej. Ciudad de México y Área Metropolitana" value="${interviewAnswers.coverage || ''}">
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+          <div class="form-group">
+            <label>Teléfono / WhatsApp:</label>
+            <input type="text" id="ivPhone" class="form-control" placeholder="555-123-4567" value="${interviewAnswers.phone || currentConfig?.business?.phone || ''}">
+          </div>
+          <div class="form-group">
+            <label>Correo Electrónico:</label>
+            <input type="text" id="ivEmail" class="form-control" placeholder="contacto@empresa.com" value="${interviewAnswers.email || currentConfig?.business?.email || ''}">
+          </div>
+        </div>
+      `;
+      break;
+
+    case 2:
+      bodyEl.innerHTML = `
+        <h4 style="color:var(--text-main); font-size:14px; margin-bottom:6px;">⏰ 2. Horarios y Canales de Atención</h4>
+        <p style="font-size:12px; color:var(--text-dim); margin-bottom:12px;">¿En qué días y horarios atienden a clientes y qué tan rápido responden?</p>
+        <div class="form-group">
+          <label>Horario Entre Semana (Lunes a Viernes):</label>
+          <input type="text" id="ivHours" class="form-control" placeholder="ej. Lunes a Viernes de 9:00 AM a 6:30 PM corrido" value="${interviewAnswers.hours || currentConfig?.business?.hours || ''}">
+        </div>
+        <div class="form-group">
+          <label>Horario de Fin de Semana (Sábados y Domingos):</label>
+          <input type="text" id="ivWeekendHours" class="form-control" placeholder="ej. Sábados de 9:00 AM a 2:00 PM. Domingos cerrado" value="${interviewAnswers.weekendHours || ''}">
+        </div>
+        <div class="form-group">
+          <label>Tiempos de Respuesta Estimados:</label>
+          <input type="text" id="ivResponseTime" class="form-control" placeholder="ej. Respuesta inmediata por WhatsApp / Citas con 24h de anticipación" value="${interviewAnswers.responseTime || ''}">
+        </div>
+      `;
+      break;
+
+    case 3:
+      bodyEl.innerHTML = `
+        <h4 style="color:var(--text-main); font-size:14px; margin-bottom:6px;">📦 3. Servicios y Catálogo de Productos</h4>
+        <p style="font-size:12px; color:var(--text-dim); margin-bottom:12px;">Describe a detalle tus servicios principales, paquetes o catálogo para que el bot responda con precisión.</p>
+        <div class="form-group">
+          <label>Servicios Principales y Descripción:</label>
+          <textarea id="ivServicesText" class="form-control" style="height:140px; font-family:var(--font-mono); font-size:12px;" placeholder="ej.&#10;1. Afinación Mayor: Incluye cambio de aceite sintético, filtros y bujías.&#10;2. Frenos: Rectificación de discos y balatas cerámicas.&#10;3. Diagnóstico por Computadora: Escaneo OBD2 completo con reporte.">${interviewAnswers.servicesText || currentConfig?.business?.services || ''}</textarea>
+        </div>
+      `;
+      break;
+
+    case 4:
+      bodyEl.innerHTML = `
+        <h4 style="color:var(--text-main); font-size:14px; margin-bottom:6px;">💰 4. Precios, Cotizaciones y Métodos de Pago</h4>
+        <p style="font-size:12px; color:var(--text-dim); margin-bottom:12px;">¿Cuáles son tus precios base o promedio y cómo te pagan los clientes?</p>
+        <div class="form-group">
+          <label>Precios Base o Rangos Estimados:</label>
+          <textarea id="ivPricingText" class="form-control" style="height:100px; font-family:var(--font-mono); font-size:12px;" placeholder="ej. Afinación desde $1,800 MXN. Cambio de frenos desde $1,200 MXN. Diagnóstico computarizado $450 MXN (gratis al reparar con nosotros).">${interviewAnswers.pricingText || ''}</textarea>
+        </div>
+        <div class="form-group">
+          <label>Métodos de Pago Aceptados:</label>
+          <input type="text" id="ivPaymentMethods" class="form-control" placeholder="ej. Tarjetas de crédito/débito (Visa, Mastercard, Stripe), Transferencia SPEI y Efectivo" value="${interviewAnswers.paymentMethods || currentConfig?.business?.paymentMethods || ''}">
+        </div>
+        <div class="form-group">
+          <label>Política de Anticipos:</label>
+          <input type="text" id="ivDepositPolicy" class="form-control" placeholder="ej. Se requiere 50% de anticipo para compra de refacciones especiales" value="${interviewAnswers.depositPolicy || ''}">
+        </div>
+      `;
+      break;
+
+    case 5:
+      bodyEl.innerHTML = `
+        <h4 style="color:var(--text-main); font-size:14px; margin-bottom:6px;">🛡️ 5. Políticas, Garantías y Facturación</h4>
+        <p style="font-size:12px; color:var(--text-dim); margin-bottom:12px;">Reglas claras de garantía, cancelaciones y emisión de facturas.</p>
+        <div class="form-group">
+          <label>Garantía de los Trabajos / Productos:</label>
+          <input type="text" id="ivWarranty" class="form-control" placeholder="ej. 6 meses o 10,000 km de garantía por escrito en mano de obra" value="${interviewAnswers.warranty || ''}">
+        </div>
+        <div class="form-group">
+          <label>Política de Cancelación o Reembolso:</label>
+          <input type="text" id="ivRefundPolicy" class="form-control" placeholder="ej. Cancelación sin costo avisando 24 horas antes de la cita" value="${interviewAnswers.refundPolicy || ''}">
+        </div>
+        <div class="form-group">
+          <label>Facturación Fiscal:</label>
+          <input type="text" id="ivBillingPolicy" class="form-control" placeholder="ej. Facturamos todos los servicios, enviar Constancia de Situación Fiscal el mismo mes" value="${interviewAnswers.billingPolicy || ''}">
+        </div>
+      `;
+      break;
+
+    case 6:
+      bodyEl.innerHTML = `
+        <h4 style="color:var(--text-main); font-size:14px; margin-bottom:6px;">❓ 6. Preguntas Frecuentes de los Clientes (FAQ)</h4>
+        <p style="font-size:12px; color:var(--text-dim); margin-bottom:12px;">Escribe las 3 a 5 preguntas que más te hacen tus clientes todos los días con sus respuestas.</p>
+        <div class="form-group">
+          <label>Preguntas y Respuestas Clave:</label>
+          <textarea id="ivFaqText" class="form-control" style="height:160px; font-family:var(--font-mono); font-size:12px;" placeholder="ej.&#10;¿Cuánto tiempo tardan en entregar?&#10;La mayoría de afinaciones y servicios menores se entregan el mismo día (4 a 6 horas).&#10;&#10;¿Cuentan con sala de espera?&#10;Sí, con aire acondicionado, café y WiFi gratuito para clientes.&#10;&#10;¿Tienen grúa o auxilio vial?&#10;Sí, contamos con convenio de grúa para emergencias.">${interviewAnswers.faqText || ''}</textarea>
+        </div>
+      `;
+      break;
+  }
+}
+
+function captureCurrentStepAnswers(step) {
+  switch (step) {
+    case 1:
+      interviewAnswers.businessName = document.getElementById('ivBizName')?.value || '';
+      interviewAnswers.niche = document.getElementById('ivNiche')?.value || '';
+      interviewAnswers.location = document.getElementById('ivLocation')?.value || '';
+      interviewAnswers.coverage = document.getElementById('ivCoverage')?.value || '';
+      interviewAnswers.phone = document.getElementById('ivPhone')?.value || '';
+      interviewAnswers.email = document.getElementById('ivEmail')?.value || '';
+      break;
+    case 2:
+      interviewAnswers.hours = document.getElementById('ivHours')?.value || '';
+      interviewAnswers.weekendHours = document.getElementById('ivWeekendHours')?.value || '';
+      interviewAnswers.responseTime = document.getElementById('ivResponseTime')?.value || '';
+      break;
+    case 3:
+      interviewAnswers.servicesText = document.getElementById('ivServicesText')?.value || '';
+      break;
+    case 4:
+      interviewAnswers.pricingText = document.getElementById('ivPricingText')?.value || '';
+      interviewAnswers.paymentMethods = document.getElementById('ivPaymentMethods')?.value || '';
+      interviewAnswers.depositPolicy = document.getElementById('ivDepositPolicy')?.value || '';
+      break;
+    case 5:
+      interviewAnswers.warranty = document.getElementById('ivWarranty')?.value || '';
+      interviewAnswers.refundPolicy = document.getElementById('ivRefundPolicy')?.value || '';
+      interviewAnswers.billingPolicy = document.getElementById('ivBillingPolicy')?.value || '';
+      break;
+    case 6:
+      interviewAnswers.faqText = document.getElementById('ivFaqText')?.value || '';
+      break;
+  }
+}
+
+async function submitInterviewStep() {
+  captureCurrentStepAnswers(currentInterviewStep);
+  const nextBtn = document.getElementById('btnInterviewNext');
+  const statusMsg = document.getElementById('interviewStatusMsg');
+
+  nextBtn.disabled = true;
+  nextBtn.textContent = 'Guardando e indexando...';
+
+  try {
+    const res = await fetch('/api/kb/interview/step', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        step: currentInterviewStep,
+        answers: interviewAnswers,
+        botId: currentBotId
+      })
+    });
+    const data = await res.json();
+
+    if (data.success) {
+      statusMsg.textContent = `✅ ${data.savedSection} indexado con éxito`;
+      statusMsg.style.display = 'block';
+      await loadKbFiles();
+
+      if (data.isFinished) {
+        showToast('🎉 ¡Base de Conocimiento completada al 100%!');
+        setTimeout(() => {
+          closeInterviewWizard();
+        }, 1200);
+      } else {
+        currentInterviewStep = data.nextStep;
+        renderInterviewStep(currentInterviewStep);
+      }
+    }
+  } catch (err) {
+    showToast('❌ Error guardando sección: ' + err.message);
+  } finally {
+    nextBtn.disabled = false;
+  }
+}
+
+function prevInterviewStep() {
+  if (currentInterviewStep > 1) {
+    captureCurrentStepAnswers(currentInterviewStep);
+    currentInterviewStep--;
+    renderInterviewStep(currentInterviewStep);
+  }
+}
+
 // ================= HELPERS =================
 function showToast(message) {
   const toast = document.getElementById('toast');
@@ -1236,4 +1522,5 @@ function escapeHtml(str) {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
 }
+
 

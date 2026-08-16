@@ -224,6 +224,74 @@ export function createServer(customConfig = null) {
         return sendJson(res, 200, { success: deleted });
       }
 
+      // ── AUTO-SCRAPER WEB PARA KB ──
+      if (pathname === '/api/kb/scrape' && req.method === 'POST') {
+        const body = await parseJsonBody(req);
+        let targetUrl = (body.url || '').trim();
+        if (!targetUrl) return sendJson(res, 400, { error: 'URL requerida' });
+        if (!targetUrl.startsWith('http://') && !targetUrl.startsWith('https://')) {
+          targetUrl = 'https://' + targetUrl;
+        }
+
+        try {
+          const fetchRes = await fetch(targetUrl, {
+            headers: { 'User-Agent': 'Mozilla/5.0 FacilisBot/2.0' }
+          });
+          const html = await fetchRes.text();
+          const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+          const title = titleMatch ? titleMatch[1].trim() : targetUrl;
+          let cleanText = html
+            .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, ' ')
+            .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, ' ')
+            .replace(/<[^>]+>/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+          
+          const maxLen = 8000;
+          const trimmed = cleanText.length > maxLen ? cleanText.slice(0, maxLen) + '...' : cleanText;
+          const markdown = `# Información Extraída de ${title}\n**Fuente:** ${targetUrl}\n\n---\n\n${trimmed}`;
+          const filename = 'web_' + new URL(targetUrl).hostname.replace(/[^a-zA-Z0-9]/g, '_') + '.md';
+          const currentKb = await getKnowledgeBase(reqBotId, storage);
+          await currentKb.saveDocument(reqBotId, filename, markdown, storage);
+
+          return sendJson(res, 200, { success: true, filename, title, preview: markdown.slice(0, 400) });
+        } catch (err) {
+          return sendJson(res, 400, { success: false, error: err.message });
+        }
+      }
+
+      // ── ENTREVISTA ASISTIDA KB ──
+      if (pathname === '/api/kb/interview/step' && req.method === 'POST') {
+        const body = await parseJsonBody(req);
+        const step = body.step || 1;
+        const answers = body.answers || {};
+
+        const sections = [
+          { step: 1, name: 'perfil_ubicacion.md', format: (a) => `# Perfil y Ubicación\n- Nombre: ${a.businessName || ''}\n- Giro: ${a.niche || ''}\n- Ubicación: ${a.location || ''}\n- Cobertura: ${a.coverage || ''}\n- Tel: ${a.phone || ''} | Correo: ${a.email || ''}` },
+          { step: 2, name: 'horarios_atencion.md', format: (a) => `# Horarios de Atención\n- Lunes a Viernes: ${a.hours || '9:00 AM - 6:00 PM'}\n- Fin de semana: ${a.weekendHours || 'Sábados 9:00 AM - 2:00 PM'}` },
+          { step: 3, name: 'servicios_productos.md', format: (a) => `# Servicios y Productos\n${a.servicesText || ''}` },
+          { step: 4, name: 'precios_pagos.md', format: (a) => `# Precios y Pagos\n- Precios: ${a.pricingText || ''}\n- Métodos: ${a.paymentMethods || ''}\n- Anticipo: ${a.depositPolicy || ''}` },
+          { step: 5, name: 'politicas_garantias.md', format: (a) => `# Políticas y Garantías\n- Garantía: ${a.warranty || ''}\n- Cancelaciones: ${a.refundPolicy || ''}\n- Facturación: ${a.billingPolicy || ''}` },
+          { step: 6, name: 'preguntas_frecuentes.md', format: (a) => `# Preguntas Frecuentes\n${a.faqText || ''}` }
+        ];
+
+        const targetSection = sections.find(s => s.step === step);
+        if (targetSection) {
+          const markdown = targetSection.format(answers);
+          const currentKb = await getKnowledgeBase(reqBotId, storage);
+          await currentKb.saveDocument(reqBotId, targetSection.name, markdown, storage);
+        }
+
+        const isFinished = step >= 6;
+        return sendJson(res, 200, {
+          success: true,
+          savedSection: targetSection ? targetSection.name : null,
+          nextStep: isFinished ? null : step + 1,
+          isFinished,
+          message: isFinished ? '¡Excelente! Tu Base de Conocimiento ya tiene todo lo esencial.' : `Sección ${step} guardada.`
+        });
+      }
+
       // ── 12 SUPERPOWERS & ANALYTICS APIs ──
       if (pathname === '/api/reports/daily' && (req.method === 'GET' || req.method === 'POST')) {
         const botCfg = await loadConfig(reqBotId, storage);
