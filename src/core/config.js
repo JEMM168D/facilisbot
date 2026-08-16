@@ -2,10 +2,11 @@ import fs from 'fs';
 import path from 'path';
 
 /**
- * Default configuration structure for Yunque Bots
+ * Default configuration structure for FacilisBot
  */
 export const DEFAULT_CONFIG = {
   bot: {
+    id: 'default',
     name: 'Asistente Virtual',
     niche: 'starter',
     language: 'es',
@@ -19,7 +20,7 @@ export const DEFAULT_CONFIG = {
     industry: 'Servicios',
     description: 'Ofrecemos soluciones personalizadas y atención de primera calidad a todos nuestros clientes.',
     services: 'Consultoría, Atención al cliente, Soporte, Ventas',
-    hours: 'Lunes a Viernes de 9:00 AM a 6:00 PM',
+    hours: 'Lunes a Viernes de 9:00 AM - 6:00 PM',
     location: 'Atención online y presencial',
     phone: '+1 555-0199',
     email: 'contacto@miempresa.com',
@@ -87,17 +88,32 @@ export const DEFAULT_CONFIG = {
 };
 
 /**
- * Load and merge configuration from local file, env vars, and defaults
+ * Load and merge configuration from local file, bot directory, env vars, and defaults
  */
-export function loadConfig(baseDir = process.cwd()) {
-  let config = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
+export function loadConfig(botIdOrBaseDir = 'default', baseDir = process.cwd()) {
+  let botId = 'default';
+  let actualBaseDir = baseDir;
 
-  // Try loading member/config.local.json or bot.config.json
-  const configPaths = [
-    path.join(baseDir, 'member', 'config.local.json'),
-    path.join(baseDir, 'bot.config.json'),
-    path.join(baseDir, 'config.json')
-  ];
+  if (typeof botIdOrBaseDir === 'string' && (botIdOrBaseDir.includes('/') || botIdOrBaseDir.includes('\\') || botIdOrBaseDir.startsWith('.'))) {
+    actualBaseDir = botIdOrBaseDir;
+  } else if (typeof botIdOrBaseDir === 'string') {
+    botId = botIdOrBaseDir;
+  }
+
+  let config = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
+  config.bot.id = botId;
+
+  // Paths to try
+  const configPaths = [];
+
+  if (botId && botId !== 'default') {
+    configPaths.push(path.join(actualBaseDir, 'member', 'bots', botId, 'config.json'));
+    configPaths.push(path.join(actualBaseDir, 'member', 'bots', botId, 'config.local.json'));
+  }
+
+  configPaths.push(path.join(actualBaseDir, 'member', 'config.local.json'));
+  configPaths.push(path.join(actualBaseDir, 'bot.config.json'));
+  configPaths.push(path.join(actualBaseDir, 'config.json'));
 
   for (const configPath of configPaths) {
     if (fs.existsSync(configPath)) {
@@ -105,6 +121,7 @@ export function loadConfig(baseDir = process.cwd()) {
         const raw = fs.readFileSync(configPath, 'utf8');
         const parsed = JSON.parse(raw);
         config = deepMerge(config, parsed);
+        if (!config.bot.id) config.bot.id = botId;
         break;
       } catch (err) {
         console.warn(`[Config] Advertencia al leer ${configPath}:`, err.message);
@@ -113,19 +130,19 @@ export function loadConfig(baseDir = process.cwd()) {
   }
 
   // Override with environment variables if present
-  if (process.env.BOT_NAME) config.bot.name = process.env.BOT_NAME;
-  if (process.env.BOT_NICHE) config.bot.niche = process.env.BOT_NICHE;
+  if (process.env.BOT_NAME && botId === 'default') config.bot.name = process.env.BOT_NAME;
+  if (process.env.BOT_NICHE && botId === 'default') config.bot.niche = process.env.BOT_NICHE;
   if (process.env.LLM_PROVIDER) config.llm.provider = process.env.LLM_PROVIDER;
   if (process.env.LLM_MODEL) config.llm.model = process.env.LLM_MODEL;
   if (process.env.GEMINI_API_KEY) config.llm.geminiApiKey = process.env.GEMINI_API_KEY;
   if (process.env.ANTHROPIC_API_KEY) config.llm.anthropicApiKey = process.env.ANTHROPIC_API_KEY;
   if (process.env.OPENAI_API_KEY) config.llm.openaiApiKey = process.env.OPENAI_API_KEY;
   if (process.env.GROK_API_KEY || process.env.XAI_API_KEY) config.llm.grokApiKey = process.env.GROK_API_KEY || process.env.XAI_API_KEY;
-  if (process.env.TELEGRAM_BOT_TOKEN) {
+  if (process.env.TELEGRAM_BOT_TOKEN && botId === 'default') {
     config.channels.telegram.botToken = process.env.TELEGRAM_BOT_TOKEN;
     config.channels.telegram.enabled = true;
   }
-  if (process.env.WHATSAPP_TOKEN) {
+  if (process.env.WHATSAPP_TOKEN && botId === 'default') {
     config.channels.whatsapp.accessToken = process.env.WHATSAPP_TOKEN;
     config.channels.whatsapp.enabled = true;
   }
@@ -136,10 +153,91 @@ export function loadConfig(baseDir = process.cwd()) {
 }
 
 /**
+ * List all registered bots in the system
+ */
+export function listBots(baseDir = process.cwd()) {
+  const bots = [];
+
+  // Default bot
+  const defaultConfig = loadConfig('default', baseDir);
+  bots.push({
+    id: 'default',
+    name: defaultConfig.bot?.name || 'Asistente Principal',
+    niche: defaultConfig.bot?.niche || 'starter',
+    businessName: defaultConfig.business?.name || 'Mi Empresa',
+    llmProvider: defaultConfig.llm?.provider || 'gemini',
+    llmModel: defaultConfig.llm?.model || 'gemini-3.5-flash-lite'
+  });
+
+  // Additional bots in member/bots/
+  const botsDir = path.join(baseDir, 'member', 'bots');
+  if (fs.existsSync(botsDir)) {
+    const entries = fs.readdirSync(botsDir, { withFileTypes: true });
+    for (const entry of entries) {
+      if (entry.isDirectory()) {
+        const botId = entry.name;
+        const cfgPath = path.join(botsDir, botId, 'config.json');
+        if (fs.existsSync(cfgPath)) {
+          try {
+            const raw = fs.readFileSync(cfgPath, 'utf8');
+            const cfg = JSON.parse(raw);
+            bots.push({
+              id: botId,
+              name: cfg.bot?.name || botId,
+              niche: cfg.bot?.niche || 'starter',
+              businessName: cfg.business?.name || botId,
+              llmProvider: cfg.llm?.provider || 'gemini',
+              llmModel: cfg.llm?.model || 'gemini-3.5-flash-lite'
+            });
+          } catch (e) {
+            // Ignore unparseable
+          }
+        }
+      }
+    }
+  }
+
+  return bots;
+}
+
+/**
+ * Create a new tenant bot instance with isolated config and KB
+ */
+export function createBotInstance(botId, customConfig = {}, baseDir = process.cwd()) {
+  const cleanId = botId.toLowerCase().replace(/[^a-z0-9_-]/g, '-');
+  const botDir = path.join(baseDir, 'member', 'bots', cleanId);
+  const kbDir = path.join(botDir, 'kb');
+
+  fs.mkdirSync(kbDir, { recursive: true });
+
+  const fullConfig = deepMerge(JSON.parse(JSON.stringify(DEFAULT_CONFIG)), customConfig);
+  fullConfig.bot.id = cleanId;
+
+  fs.writeFileSync(path.join(botDir, 'config.json'), JSON.stringify(fullConfig, null, 2), 'utf8');
+
+  return {
+    botId: cleanId,
+    botDir,
+    kbDir,
+    config: fullConfig
+  };
+}
+
+/**
  * Save configuration to file
  */
 export function saveConfig(newConfig, targetFile = null, baseDir = process.cwd()) {
-  const fileToSave = targetFile || path.join(baseDir, 'member', 'config.local.json');
+  let fileToSave = targetFile;
+  const botId = newConfig.bot?.id || 'default';
+
+  if (!fileToSave) {
+    if (botId && botId !== 'default') {
+      fileToSave = path.join(baseDir, 'member', 'bots', botId, 'config.json');
+    } else {
+      fileToSave = path.join(baseDir, 'member', 'config.local.json');
+    }
+  }
+
   const dir = path.dirname(fileToSave);
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });

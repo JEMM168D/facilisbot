@@ -1,21 +1,31 @@
 import { loadConfig } from './config.js';
 import { db } from './storage/db.js';
-import { kb } from './knowledge/search.js';
+import { getKnowledgeBase, kb as defaultKb } from './knowledge/search.js';
 import { UniversalLlmEngine } from './llm/index.js';
 
 /**
- * Main Conversation Engine for Yunque Bots
+ * Main Conversation Engine for FacilisBot (Multi-Tenant)
  */
 export class BotEngine {
-  constructor(config = null) {
-    this.config = config || loadConfig();
+  constructor(configOrBotId = null) {
+    if (typeof configOrBotId === 'string') {
+      this.botId = configOrBotId;
+      this.config = loadConfig(this.botId);
+    } else {
+      this.config = configOrBotId || loadConfig();
+      this.botId = this.config.bot?.id || 'default';
+    }
+
+    this.kb = getKnowledgeBase(this.botId);
     this.llm = new UniversalLlmEngine(this.config);
   }
 
   updateConfig(newConfig) {
     this.config = newConfig;
+    this.botId = this.config.bot?.id || 'default';
+    this.kb = getKnowledgeBase(this.botId);
     this.llm = new UniversalLlmEngine(this.config);
-    kb.reload();
+    this.kb.reload();
   }
 
   /**
@@ -36,8 +46,8 @@ export class BotEngine {
       };
     }
 
-    // 1. Get or create conversation
-    const conversation = db.getOrCreateConversation(channel, userId, userName);
+    // 1. Get or create conversation with botId context
+    const conversation = db.getOrCreateConversation(channel, userId, userName, this.botId);
 
     // 2. Save incoming user message
     db.addMessage({
@@ -59,7 +69,7 @@ export class BotEngine {
     }
 
     // 4. Retrieve RAG context from Knowledge Base
-    const kbContext = kb.getContextForQuery(text);
+    const kbContext = this.kb.getContextForQuery(text);
 
     // 5. Build dynamic system prompt
     const systemPrompt = this.buildSystemPrompt();
@@ -78,6 +88,7 @@ export class BotEngine {
       contextInfo: kbContext,
       conversationContext: {
         conversationId: conversation.id,
+        botId: this.botId,
         channel,
         userId,
         userName: conversation.userName,
@@ -99,6 +110,7 @@ export class BotEngine {
     return {
       reply: replyText,
       conversationId: conversation.id,
+      botId: this.botId,
       status: conversation.status,
       leadId: conversation.leadId,
       tools: llmResponse.executedTools || null,
@@ -139,4 +151,19 @@ DIRECTRICES Y REGLAS DE RESPUESTA:
   }
 }
 
-export const botEngine = new BotEngine();
+const engineRegistry = new Map();
+
+/**
+ * Get or instantiate BotEngine for a specific botId
+ */
+export function getBotEngine(botId = 'default') {
+  const cleanId = botId || 'default';
+  if (engineRegistry.has(cleanId)) {
+    return engineRegistry.get(cleanId);
+  }
+  const engine = new BotEngine(cleanId);
+  engineRegistry.set(cleanId, engine);
+  return engine;
+}
+
+export const botEngine = getBotEngine('default');

@@ -1,15 +1,48 @@
-// FacilisBot Administrative Dashboard Client
+// FacilisBot Administrative Dashboard Client (Multi-Tenant)
 let currentConfig = null;
 let activeConversationId = null;
+let currentBotId = 'default';
 let allLeads = [];
 let allConversations = [];
 
 document.addEventListener('DOMContentLoaded', () => {
   setupNavigation();
+  loadBotsList();
   loadOverview();
   loadConfig();
   setupWidgetSnippet();
 });
+
+// ================= BOT SWITCHER =================
+async function loadBotsList() {
+  try {
+    const res = await fetch('/api/bots');
+    const data = await res.json();
+    const switcher = document.getElementById('botSwitcher');
+    if (!switcher) return;
+
+    switcher.innerHTML = '';
+    (data.bots || []).forEach(b => {
+      const opt = document.createElement('option');
+      opt.value = b.id;
+      opt.textContent = `${b.name} (${b.id})`;
+      if (b.id === currentBotId) opt.selected = true;
+      switcher.appendChild(opt);
+    });
+  } catch (err) {
+    console.error('Error cargando lista de bots:', err);
+  }
+}
+
+function switchActiveBot(botId) {
+  currentBotId = botId;
+  loadOverview();
+  loadConfig();
+  loadKbFiles();
+  setupWidgetSnippet();
+  clearSimulatorChat();
+  showToast(`Cambiado a bot: ${botId}`);
+}
 
 // ================= NAVIGATION =================
 function setupNavigation() {
@@ -37,7 +70,7 @@ function setupNavigation() {
 // ================= 1. OVERVIEW =================
 async function loadOverview() {
   try {
-    const res = await fetch('/api/overview');
+    const res = await fetch(`/api/overview?bot_id=${encodeURIComponent(currentBotId)}`);
     const data = await res.json();
 
     document.getElementById('sidebarBotName').textContent = data.bot?.name || 'FacilisBot';
@@ -58,34 +91,63 @@ async function loadOverview() {
     setChannelBadge('badgeStatusWhatsApp', ch.whatsapp);
     setChannelBadge('badgeStatusTelegram', ch.telegram);
     setChannelBadge('badgeStatusInstagram', ch.instagram);
+    setChannelBadge('badgeStatusWeb', ch.web);
   } catch (err) {
-    console.error('Error cargando overview:', err);
+    console.error('Error cargando métricas:', err);
   }
 }
 
-function setChannelBadge(elemId, isEnabled) {
+function setChannelBadge(elemId, isActive) {
   const el = document.getElementById(elemId);
   if (!el) return;
-  if (isEnabled) {
-    el.className = 'badge badge-active';
-    el.textContent = 'Conectado';
+  if (isActive) {
+    el.textContent = 'ACTIVO';
+    el.className = 'badge badge-green';
   } else {
-    el.className = 'badge';
-    el.style.background = 'rgba(255,255,255,0.05)';
-    el.style.color = 'var(--text-dim)';
-    el.textContent = 'Desconectado';
+    el.textContent = 'INACTIVO';
+    el.className = 'badge badge-gray';
   }
 }
 
 // ================= 2. INBOX =================
 async function loadConversations() {
   try {
-    const res = await fetch('/api/conversations');
-    const data = await res.json();
-    allConversations = data.conversations || [];
-    renderThreadList(allConversations);
+    const channel = document.getElementById('filterChannel')?.value || '';
+    const status = document.getElementById('filterStatus')?.value || '';
+    const url = `/api/conversations?channel=${encodeURIComponent(channel)}&status=${encodeURIComponent(status)}&bot_id=${encodeURIComponent(currentBotId)}`;
 
-    if (allConversations.length > 0 && !activeConversationId) {
+    const res = await fetch(url);
+    allConversations = await res.json();
+
+    const listEl = document.getElementById('conversationsList');
+    listEl.innerHTML = '';
+
+    if (allConversations.length === 0) {
+      listEl.innerHTML = `<div style="padding: 24px; text-align: center; color: var(--text-muted);">No hay conversaciones registradas</div>`;
+      return;
+    }
+
+    allConversations.forEach(c => {
+      const item = document.createElement('div');
+      item.className = `conv-item ${c.id === activeConversationId ? 'active' : ''}`;
+      item.onclick = () => selectConversation(c.id);
+
+      const channelEmoji = c.channel === 'whatsapp' ? '💬' : c.channel === 'telegram' ? '✈️' : '🌐';
+      const timeStr = new Date(c.updatedAt || c.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+      item.innerHTML = `
+        <div class="conv-item-header">
+          <span class="conv-item-user">${channelEmoji} ${escapeHtml(c.userName || c.userId)}</span>
+          <span class="conv-item-time">${timeStr}</span>
+        </div>
+        <div class="conv-item-preview">${escapeHtml(c.lastMessage?.content || 'Sin mensajes')}</div>
+      `;
+      listEl.appendChild(item);
+    });
+
+    if (activeConversationId) {
+      selectConversation(activeConversationId);
+    } else if (allConversations[0]) {
       selectConversation(allConversations[0].id);
     }
   } catch (err) {
@@ -93,309 +155,174 @@ async function loadConversations() {
   }
 }
 
-function renderThreadList(list) {
-  const container = document.getElementById('threadList');
-  if (list.length === 0) {
-    container.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-dim);">No hay conversaciones aún.</div>';
-    return;
-  }
-
-  container.innerHTML = list.map(c => {
-    const channelIcon = c.channel === 'whatsapp' ? '💬' : c.channel === 'telegram' ? '✈️' : c.channel === 'instagram' ? '📸' : '🌐';
-    const isEscalated = c.status === 'escalated';
-    const badgeHtml = isEscalated ? '<span class="badge badge-escalated">Humano</span>' : '';
-
-    return `
-      <div class="thread-item ${c.id === activeConversationId ? 'active' : ''}" onclick="selectConversation('${c.id}')">
-        <div class="thread-header">
-          <span class="thread-user">${channelIcon} ${escapeHtml(c.userName || 'Usuario')}</span>
-          <span class="thread-time">${formatTime(c.updatedAt)}</span>
-        </div>
-        <div class="thread-preview">${escapeHtml(c.lastMessage || 'Conversación iniciada')}</div>
-        <div style="margin-top: 4px;">${badgeHtml}</div>
-      </div>
-    `;
-  }).join('');
-}
-
-async function selectConversation(id) {
-  activeConversationId = id;
-  renderThreadList(allConversations);
+async function selectConversation(convId) {
+  activeConversationId = convId;
+  document.querySelectorAll('.conv-item').forEach(i => i.classList.remove('active'));
 
   try {
-    const res = await fetch(`/api/conversations/${id}/messages`);
+    const res = await fetch(`/api/conversations/${convId}/messages`);
     const data = await res.json();
-    const conv = data.conversation;
-    const messages = data.messages || [];
+    const { conversation, messages } = data;
 
-    document.getElementById('activeChatUser').textContent = `${conv.userName || 'Usuario'} (ID: ${conv.userId})`;
-    document.getElementById('activeChatChannel').textContent = `Canal: ${conv.channel.toUpperCase()} · Estado: ${conv.status.toUpperCase()}`;
-    document.getElementById('activeChatActions').style.display = 'flex';
+    document.getElementById('activeChatUser').textContent = conversation.userName || conversation.userId;
+    document.getElementById('activeChatMeta').textContent = `Canal: ${conversation.channel.toUpperCase()} · ID: ${conversation.id}`;
 
-    const btnEscalate = document.getElementById('btnToggleEscalate');
-    btnEscalate.textContent = conv.status === 'escalated' ? 'Marcar como Resuelto' : 'Transferir a Humano';
-    btnEscalate.className = conv.status === 'escalated' ? 'btn btn-primary btn-sm' : 'btn btn-secondary btn-sm';
+    const msgContainer = document.getElementById('chatMessagesBody');
+    msgContainer.innerHTML = '';
 
-    const msgContainer = document.getElementById('chatMessages');
-    if (messages.length === 0) {
-      msgContainer.innerHTML = '<div style="margin: auto; color: var(--text-dim);">Sin mensajes registrados.</div>';
-      return;
-    }
-
-    msgContainer.innerHTML = messages.map(m => {
-      if (m.role === 'tool') {
-        return `<div class="msg-tool">⚡ Herramienta: ${escapeHtml(m.content)}</div>`;
-      }
-      const bubbleClass = m.role === 'user' ? 'msg-user' : 'msg-bot';
-      const senderLabel = m.role === 'user' ? '👤 Cliente' : '🤖 Asistente';
-      return `
-        <div class="msg-bubble ${bubbleClass}">
-          <div style="font-size: 11px; opacity: 0.6; margin-bottom: 4px;">${senderLabel} · ${formatTime(m.createdAt)}</div>
-          <div>${escapeHtml(m.content)}</div>
-        </div>
+    messages.forEach(m => {
+      const bubble = document.createElement('div');
+      bubble.className = `msg-bubble ${m.role === 'user' ? 'msg-user' : 'msg-bot'}`;
+      bubble.innerHTML = `
+        <div>${escapeHtml(m.content)}</div>
+        <div class="msg-time">${new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
       `;
-    }).join('');
+      msgContainer.appendChild(bubble);
+    });
 
     msgContainer.scrollTop = msgContainer.scrollHeight;
   } catch (err) {
-    console.error('Error seleccionando conversacion:', err);
+    console.error('Error seleccionando conversación:', err);
   }
 }
 
-async function sendManualReply() {
-  if (!activeConversationId) return;
-  const input = document.getElementById('manualReplyInput');
+async function sendHumanReply() {
+  const input = document.getElementById('humanReplyInput');
   const text = input.value.trim();
-  if (!text) return;
+  if (!text || !activeConversationId) return;
 
-  input.value = '';
   try {
     await fetch(`/api/conversations/${activeConversationId}/reply`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text })
     });
+    input.value = '';
     selectConversation(activeConversationId);
-    showToast('Respuesta enviada');
+    showToast('Mensaje enviado como asesor humano');
   } catch (err) {
-    console.error('Error enviando respuesta:', err);
-  }
-}
-
-async function toggleConversationEscalation() {
-  if (!activeConversationId) return;
-  const conv = allConversations.find(c => c.id === activeConversationId);
-  const nextStatus = conv?.status === 'escalated' ? 'active' : 'escalated';
-
-  try {
-    await fetch(`/api/conversations/${activeConversationId}/status`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: nextStatus })
-    });
-    loadConversations();
-    selectConversation(activeConversationId);
-    showToast(`Conversación marcada como ${nextStatus}`);
-  } catch (err) {
-    console.error('Error cambiando estado:', err);
+    console.error('Error enviando mensaje humano:', err);
   }
 }
 
 // ================= 3. LEADS CRM =================
 async function loadLeads() {
   try {
-    const res = await fetch('/api/leads');
-    const data = await res.json();
-    allLeads = data.leads || [];
-    renderLeadsTable(allLeads);
+    const status = document.getElementById('filterLeadStatus')?.value || '';
+    const search = document.getElementById('searchLeadsInput')?.value || '';
+    const url = `/api/leads?status=${encodeURIComponent(status)}&search=${encodeURIComponent(search)}&bot_id=${encodeURIComponent(currentBotId)}`;
+
+    const res = await fetch(url);
+    allLeads = await res.json();
+
+    const tbody = document.getElementById('leadsTableBody');
+    tbody.innerHTML = '';
+
+    if (allLeads.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 24px;">No se encontraron prospectos</td></tr>`;
+      return;
+    }
+
+    allLeads.forEach(l => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><strong>${escapeHtml(l.name || 'Sin nombre')}</strong></td>
+        <td>${escapeHtml(l.phone || '-')}</td>
+        <td>${escapeHtml(l.email || '-')}</td>
+        <td>${escapeHtml(l.interest || 'Interés general')}</td>
+        <td>
+          <span class="badge ${l.status === 'calificado' ? 'badge-green' : l.status === 'cerrado' ? 'badge-gold' : 'badge-gray'}">
+            ${escapeHtml(l.status)}
+          </span>
+        </td>
+        <td>${new Date(l.createdAt).toLocaleDateString()}</td>
+        <td>
+          <button class="btn btn-secondary btn-sm" onclick="exportLeadContact('${l.id}')">Exportar</button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
   } catch (err) {
     console.error('Error cargando leads:', err);
   }
 }
 
-function renderLeadsTable(list) {
-  const tbody = document.getElementById('leadsTableBody');
-  if (list.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: var(--text-dim); padding: 30px;">No se encontraron prospectos registrados.</td></tr>';
-    return;
-  }
-
-  tbody.innerHTML = list.map(l => {
-    const badgeClass = `badge-${l.status || 'nuevo'}`;
-    return `
-      <tr>
-        <td><strong>${escapeHtml(l.name || 'Sin nombre')}</strong></td>
-        <td><a href="https://wa.me/${(l.phone || '').replace(/[^0-9]/g, '')}" target="_blank" style="color: var(--accent-green); font-family: var(--font-mono);">${escapeHtml(l.phone || '-')}</a></td>
-        <td>${escapeHtml(l.email || '-')}</td>
-        <td style="max-width: 220px;">${escapeHtml(l.interest || '-')}</td>
-        <td><span class="badge" style="background: rgba(255,255,255,0.06);">${escapeHtml(l.channel || 'web')}</span></td>
-        <td>
-          <select onchange="updateLeadStatus('${l.id}', this.value)" class="form-control" style="padding: 4px 8px; font-size: 12px; width: auto;">
-            <option value="nuevo" ${l.status === 'nuevo' ? 'selected' : ''}>Nuevo</option>
-            <option value="calificado" ${l.status === 'calificado' ? 'selected' : ''}>Calificado</option>
-            <option value="seguimiento" ${l.status === 'seguimiento' ? 'selected' : ''}>Seguimiento</option>
-            <option value="cerrado" ${l.status === 'cerrado' ? 'selected' : ''}>Cerrado</option>
-          </select>
-        </td>
-        <td style="font-size: 12px; color: var(--text-dim);">${formatDate(l.createdAt)}</td>
-        <td>
-          <button class="btn btn-secondary btn-sm" onclick="promptLeadNotes('${l.id}')">Notas</button>
-        </td>
-      </tr>
-    `;
-  }).join('');
-}
-
-function filterLeads() {
-  const q = (document.getElementById('leadsSearchInput').value || '').toLowerCase();
-  const status = document.getElementById('leadsStatusFilter').value;
-
-  let filtered = allLeads;
-  if (status) filtered = filtered.filter(l => l.status === status);
-  if (q) {
-    filtered = filtered.filter(l =>
-      (l.name && l.name.toLowerCase().includes(q)) ||
-      (l.phone && l.phone.includes(q)) ||
-      (l.email && l.email.toLowerCase().includes(q)) ||
-      (l.interest && l.interest.toLowerCase().includes(q))
-    );
-  }
-  renderLeadsTable(filtered);
-}
-
-async function updateLeadStatus(id, newStatus) {
-  try {
-    await fetch(`/api/leads/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: newStatus })
-    });
-    showToast('Estado del lead actualizado');
-  } catch (err) {
-    console.error('Error actualizando lead:', err);
-  }
-}
-
-async function promptLeadNotes(id) {
-  const lead = allLeads.find(l => l.id === id);
-  const notes = prompt('Notas del prospecto:', lead?.notes || '');
-  if (notes !== null) {
-    await fetch(`/api/leads/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ notes })
-    });
-    loadLeads();
-    showToast('Notas guardadas');
+function exportLeads(format) {
+  if (format === 'csv') {
+    window.open('/api/leads/export/csv', '_blank');
+  } else {
+    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(allLeads, null, 2));
+    const dl = document.createElement('a');
+    dl.setAttribute('href', dataStr);
+    dl.setAttribute('download', `leads_${new Date().toISOString().slice(0, 10)}.json`);
+    dl.click();
   }
 }
 
 // ================= 4. KNOWLEDGE BASE =================
 async function loadKbFiles() {
   try {
-    const res = await fetch('/api/kb');
+    const res = await fetch(`/api/kb?bot_id=${encodeURIComponent(currentBotId)}`);
     const data = await res.json();
-    const list = data.documents || [];
+    const listEl = document.getElementById('kbFilesList');
+    listEl.innerHTML = '';
 
-    const container = document.getElementById('kbFilesList');
-    if (list.length === 0) {
-      container.innerHTML = '<div style="color: var(--text-dim); font-size: 13px;">No hay archivos creados.</div>';
+    if (!data.documents || data.documents.length === 0) {
+      listEl.innerHTML = `<div style="padding: 16px; color: var(--text-muted); font-size: 13px;">No hay archivos en la Base de Conocimiento</div>`;
       return;
     }
 
-    container.innerHTML = list.map(d => `
-      <div style="padding: 8px 10px; border-radius: 8px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.02);" onclick="openKbFile('${d.filename}')">
-        <span style="font-size: 13px; color: var(--text-main);">📄 ${d.filename}</span>
-        <span style="font-size: 11px; color: var(--text-dim);">${d.size} B</span>
-      </div>
-    `).join('');
-
-    if (list.length > 0 && !document.getElementById('kbCurrentFilename').value) {
-      openKbFile(list[0].filename);
-    }
+    data.documents.forEach((d, idx) => {
+      const item = document.createElement('div');
+      item.className = 'kb-file-item';
+      item.onclick = () => openKbDocument(d.filename);
+      item.innerHTML = `
+        <span>📄 <strong>${escapeHtml(d.filename)}</strong></span>
+        <span style="color: var(--text-muted); font-size: 12px;">${(d.size / 1024).toFixed(1)} KB · ${d.chunksCount} fragmentos</span>
+      `;
+      listEl.appendChild(item);
+      if (idx === 0) openKbDocument(d.filename);
+    });
   } catch (err) {
     console.error('Error cargando archivos KB:', err);
   }
 }
 
-async function openKbFile(filename) {
+async function openKbDocument(filename) {
   try {
-    const res = await fetch(`/api/kb/${encodeURIComponent(filename)}`);
+    const res = await fetch(`/api/kb/${encodeURIComponent(filename)}?bot_id=${encodeURIComponent(currentBotId)}`);
     const data = await res.json();
-    document.getElementById('kbCurrentFilename').value = data.filename;
-    document.getElementById('kbEditorContent').value = data.content;
+    document.getElementById('kbCurrentFileName').textContent = data.filename;
+    document.getElementById('kbEditor').value = data.content;
   } catch (err) {
-    console.error('Error abriendo archivo KB:', err);
+    console.error('Error abriendo documento KB:', err);
   }
 }
 
-function createNewKbFile() {
-  const filename = prompt('Nombre del nuevo archivo (ej. politicas.md, servicios.md):', 'nuevo-documento.md');
-  if (filename) {
-    document.getElementById('kbCurrentFilename').value = filename;
-    document.getElementById('kbEditorContent').value = `# ${filename.replace(/\.[^/.]+$/, '')}\n\nEscribe aquí la información oficial para el bot...`;
-  }
-}
-
-async function saveCurrentKbFile() {
-  const filename = document.getElementById('kbCurrentFilename').value.trim();
-  const content = document.getElementById('kbEditorContent').value;
-  if (!filename) return alert('Ingresa un nombre de archivo');
+async function saveKbDocument() {
+  const filename = document.getElementById('kbCurrentFileName').textContent;
+  const content = document.getElementById('kbEditor').value;
+  if (!filename || filename === 'Selecciona un archivo...') return;
 
   try {
-    await fetch('/api/kb', {
+    await fetch(`/api/kb?bot_id=${encodeURIComponent(currentBotId)}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ filename, content })
     });
+    showToast(`Archivo ${filename} guardado e indexado`);
     loadKbFiles();
-    showToast(`Archivo ${filename} guardado exitosamente`);
   } catch (err) {
-    console.error('Error guardando KB:', err);
-  }
-}
-
-async function deleteCurrentKbFile() {
-  const filename = document.getElementById('kbCurrentFilename').value.trim();
-  if (!filename) return;
-  if (!confirm(`¿Estás seguro de eliminar ${filename}?`)) return;
-
-  try {
-    await fetch(`/api/kb/${encodeURIComponent(filename)}`, { method: 'DELETE' });
-    document.getElementById('kbCurrentFilename').value = '';
-    document.getElementById('kbEditorContent').value = '';
-    loadKbFiles();
-    showToast('Archivo eliminado');
-  } catch (err) {
-    console.error('Error eliminando KB:', err);
-  }
-}
-
-async function testKbSearch() {
-  const q = document.getElementById('kbSearchTestInput').value.trim();
-  if (!q) return;
-
-  try {
-    const res = await fetch('/api/test/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: q })
-    });
-    const data = await res.json();
-    document.getElementById('kbSearchResults').innerHTML = `
-      <strong>Respuesta simulada del Bot:</strong><br>${escapeHtml(data.reply)}
-    `;
-  } catch (err) {
-    console.error('Error probando búsqueda:', err);
+    console.error('Error guardando documento KB:', err);
   }
 }
 
 // ================= 5. CONNECTIONS =================
 function setupWidgetSnippet() {
   const origin = window.location.origin;
-  document.getElementById('waWebhookUrl').value = `${origin}/webhook/whatsapp`;
+  document.getElementById('waWebhookUrl').value = `${origin}/webhook/whatsapp/${currentBotId}`;
 
-  const snippet = `<!-- FacilisBot Web Chat Widget -->\n<script src="${origin}/widget/widget.js" data-bot-id="default" async></script>`;
+  const snippet = `<!-- FacilisBot Web Chat Widget -->\n<script src="${origin}/widget/widget.js" data-bot-id="${currentBotId}" async></script>`;
   document.getElementById('widgetSnippet').value = snippet;
 }
 
@@ -441,33 +368,32 @@ async function sendSimMessage() {
   const text = input.value.trim();
   if (!text) return;
 
-  input.value = '';
   const msgContainer = document.getElementById('simMessages');
 
-  // Add user bubble
-  msgContainer.innerHTML += `
-    <div class="msg-bubble msg-user">
-      <div style="font-size: 11px; opacity: 0.6; margin-bottom: 4px;">👤 Tú (Prueba)</div>
-      <div>${escapeHtml(text)}</div>
-    </div>
-  `;
+  // Append user message
+  const userBubble = document.createElement('div');
+  userBubble.className = 'msg-bubble msg-user';
+  userBubble.textContent = text;
+  msgContainer.appendChild(userBubble);
+  input.value = '';
   msgContainer.scrollTop = msgContainer.scrollHeight;
 
   try {
     const res = await fetch('/api/test/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: text })
+      body: JSON.stringify({ message: text, botId: currentBotId })
     });
     const data = await res.json();
 
-    // Add bot bubble
-    msgContainer.innerHTML += `
-      <div class="msg-bubble msg-bot">
-        <div style="font-size: 11px; opacity: 0.6; margin-bottom: 4px;">🤖 Asistente</div>
-        <div>${escapeHtml(data.reply)}</div>
-      </div>
+    // Append bot response
+    const botBubble = document.createElement('div');
+    botBubble.className = 'msg-bubble msg-bot';
+    botBubble.innerHTML = `
+      <div>${escapeHtml(data.reply)}</div>
+      ${data.tools ? `<div class="msg-tool-pill">⚡ Herramientas: ${data.tools.map(t => t.name).join(', ')}</div>` : ''}
     `;
+    msgContainer.appendChild(botBubble);
     msgContainer.scrollTop = msgContainer.scrollHeight;
 
     // Update inspector
@@ -485,7 +411,7 @@ async function sendSimMessage() {
 function clearSimulatorChat() {
   document.getElementById('simMessages').innerHTML = `
     <div class="msg-bubble msg-bot">
-      Chat reiniciado. Escribe cualquier mensaje para probar el asistente.
+      ¡Hola! Soy tu asistente en modo simulador para el bot: <strong>${escapeHtml(currentBotId)}</strong>. Escríbeme cualquier pregunta como si fueras un cliente para probar cómo respondo y cómo capturo prospectos.
     </div>
   `;
 }
@@ -493,7 +419,7 @@ function clearSimulatorChat() {
 // ================= 7. SETTINGS =================
 async function loadConfig() {
   try {
-    const res = await fetch('/api/config');
+    const res = await fetch(`/api/config?bot_id=${encodeURIComponent(currentBotId)}`);
     currentConfig = await res.json();
 
     // Bot settings
@@ -511,19 +437,19 @@ async function loadConfig() {
     document.getElementById('cfgBizLocation').value = currentConfig.business?.location || '';
     document.getElementById('cfgBizPhone').value = currentConfig.business?.phone || '';
     document.getElementById('cfgBizEmail').value = currentConfig.business?.email || '';
-    document.getElementById('cfgBizPayments').value = currentConfig.business?.paymentMethods || '';
 
     // Channel values
-    document.getElementById('waVerifyToken').value = currentConfig.channels?.whatsapp?.verifyToken || '';
     document.getElementById('waPhoneId').value = currentConfig.channels?.whatsapp?.phoneNumberId || '';
+    document.getElementById('waAccessToken').value = currentConfig.channels?.whatsapp?.accessToken || '';
+    document.getElementById('waVerifyToken').value = currentConfig.channels?.whatsapp?.verifyToken || 'yunque_verify_token_123';
     document.getElementById('tgBotToken').value = currentConfig.channels?.telegram?.botToken || '';
   } catch (err) {
     console.error('Error cargando configuración:', err);
   }
 }
 
-async function saveAllSettings() {
-  const updated = {
+async function saveAllConfig() {
+  const newConfig = {
     bot: {
       ...currentConfig.bot,
       name: document.getElementById('cfgBotName').value,
@@ -537,8 +463,7 @@ async function saveAllSettings() {
       hours: document.getElementById('cfgBizHours').value,
       location: document.getElementById('cfgBizLocation').value,
       phone: document.getElementById('cfgBizPhone').value,
-      email: document.getElementById('cfgBizEmail').value,
-      paymentMethods: document.getElementById('cfgBizPayments').value
+      email: document.getElementById('cfgBizEmail').value
     },
     llm: {
       ...currentConfig.llm,
@@ -548,62 +473,57 @@ async function saveAllSettings() {
     }
   };
 
-  const apiKey = document.getElementById('cfgLlmApiKey').value.trim();
-  if (apiKey) {
-    const provider = updated.llm.provider;
-    if (provider === 'gemini') updated.llm.geminiApiKey = apiKey;
-    if (provider === 'anthropic') updated.llm.anthropicApiKey = apiKey;
-    if (provider === 'openai') updated.llm.openaiApiKey = apiKey;
-    if (provider === 'grok') updated.llm.grokApiKey = apiKey;
+  const apiKeyInput = document.getElementById('cfgLlmApiKey').value.trim();
+  if (apiKeyInput) {
+    const prov = newConfig.llm.provider;
+    if (prov === 'gemini') newConfig.llm.geminiApiKey = apiKeyInput;
+    if (prov === 'anthropic') newConfig.llm.anthropicApiKey = apiKeyInput;
+    if (prov === 'openai') newConfig.llm.openaiApiKey = apiKeyInput;
+    if (prov === 'grok') newConfig.llm.grokApiKey = apiKeyInput;
   }
 
   try {
-    await fetch('/api/config', {
+    await fetch(`/api/config?bot_id=${encodeURIComponent(currentBotId)}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(updated)
+      body: JSON.stringify(newConfig)
     });
-    currentConfig = updated;
+    showToast('Configuración guardada exitosamente');
     loadOverview();
-    showToast('Toda la configuración ha sido guardada exitosamente');
+    loadBotsList();
   } catch (err) {
     console.error('Error guardando configuración:', err);
   }
 }
 
 async function updateConfigSection(section, data) {
-  const payload = { [section]: { ...currentConfig[section], ...data } };
-  await fetch('/api/config', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
-  });
-  currentConfig = { ...currentConfig, ...payload };
+  try {
+    await fetch(`/api/config?bot_id=${encodeURIComponent(currentBotId)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ [section]: { ...currentConfig[section], ...data } })
+    });
+    loadOverview();
+  } catch (err) {
+    console.error('Error actualizando sección:', err);
+  }
 }
 
-// ================= UTILITIES =================
-function showToast(msg) {
+// ================= HELPERS =================
+function showToast(message) {
   const toast = document.getElementById('toast');
-  toast.textContent = msg;
+  if (!toast) return;
+  toast.textContent = message;
   toast.classList.add('show');
   setTimeout(() => toast.classList.remove('show'), 3000);
 }
 
 function escapeHtml(str) {
   if (!str) return '';
-  return String(str).replace(/[&<>"']/g, m => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-  })[m]);
-}
-
-function formatTime(isoStr) {
-  if (!isoStr) return '';
-  const d = new Date(isoStr);
-  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-}
-
-function formatDate(isoStr) {
-  if (!isoStr) return '';
-  const d = new Date(isoStr);
-  return d.toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
 }

@@ -2,10 +2,10 @@ import http from 'http';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { loadConfig, saveConfig } from '../core/config.js';
+import { loadConfig, saveConfig, listBots, createBotInstance } from '../core/config.js';
 import { db } from '../core/storage/db.js';
-import { kb } from '../core/knowledge/search.js';
-import { botEngine } from '../core/engine.js';
+import { getKnowledgeBase, kb as defaultKb } from '../core/knowledge/search.js';
+import { getBotEngine, botEngine as defaultBotEngine } from '../core/engine.js';
 import { WhatsAppHandler } from '../core/channels/whatsapp.js';
 import { TelegramHandler } from '../core/channels/telegram.js';
 import { MetaDMsHandler } from '../core/channels/meta.js';
@@ -15,7 +15,7 @@ const __dirname = path.dirname(__filename);
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
 
 /**
- * Main Web Server & API Router
+ * Main Web Server & API Router (Multi-Tenant)
  */
 export function createServer(customConfig = null) {
   let config = customConfig || loadConfig();
@@ -24,7 +24,7 @@ export function createServer(customConfig = null) {
     // CORS headers
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-bot-id');
 
     if (req.method === 'OPTIONS') {
       res.writeHead(204);
@@ -34,6 +34,7 @@ export function createServer(customConfig = null) {
 
     const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
     const pathname = url.pathname;
+    const reqBotId = url.searchParams.get('bot_id') || req.headers['x-bot-id'] || 'default';
 
     try {
       // ----------------------------------------------------
@@ -60,64 +61,75 @@ export function createServer(customConfig = null) {
       }
 
       // ----------------------------------------------------
-      // 2. CHANNEL WEBHOOKS
+      // 2. CHANNEL WEBHOOKS (Supports /webhook/whatsapp and /webhook/whatsapp/:bot_id)
       // ----------------------------------------------------
       // WhatsApp Meta Cloud API
-      if (pathname === '/webhook/whatsapp') {
+      if (pathname === '/webhook/whatsapp' || pathname.startsWith('/webhook/whatsapp/')) {
+        const webhookBotId = pathname.startsWith('/webhook/whatsapp/') ? pathname.split('/')[3] : reqBotId;
+        const botCfg = loadConfig(webhookBotId);
+
         if (req.method === 'GET') {
-          const verification = WhatsAppHandler.handleVerification(req.url, config);
+          const verification = WhatsAppHandler.handleVerification(req.url, botCfg);
           res.writeHead(verification.status, { 'Content-Type': 'text/plain' });
           res.end(verification.body);
           return;
         }
         if (req.method === 'POST') {
           const body = await parseJsonBody(req);
-          const result = await WhatsAppHandler.handleCloudApiWebhook(body, config);
+          const result = await WhatsAppHandler.handleCloudApiWebhook(body, botCfg);
           return sendJson(res, result.status, result);
         }
       }
 
       // WhatsApp Twilio
-      if (pathname === '/webhook/twilio/whatsapp' && req.method === 'POST') {
+      if ((pathname === '/webhook/twilio/whatsapp' || pathname.startsWith('/webhook/twilio/whatsapp/')) && req.method === 'POST') {
+        const webhookBotId = pathname.startsWith('/webhook/twilio/whatsapp/') ? pathname.split('/')[4] : reqBotId;
+        const botCfg = loadConfig(webhookBotId);
         const bodyText = await parseTextBody(req);
         const params = new URLSearchParams(bodyText);
         const formData = Object.fromEntries(params.entries());
-        const result = await WhatsAppHandler.handleTwilioWebhook(formData, config);
+        const result = await WhatsAppHandler.handleTwilioWebhook(formData, botCfg);
         res.writeHead(result.status, result.headers);
         res.end(result.body);
         return;
       }
 
       // Telegram Bot API
-      if (pathname === '/webhook/telegram' && req.method === 'POST') {
+      if ((pathname === '/webhook/telegram' || pathname.startsWith('/webhook/telegram/')) && req.method === 'POST') {
+        const webhookBotId = pathname.startsWith('/webhook/telegram/') ? pathname.split('/')[3] : reqBotId;
+        const botCfg = loadConfig(webhookBotId);
         const update = await parseJsonBody(req);
-        const result = await TelegramHandler.handleWebhook(update, config);
+        const result = await TelegramHandler.handleWebhook(update, botCfg);
         return sendJson(res, result.status, result);
       }
 
       // Meta Instagram / Messenger
-      if (pathname === '/webhook/meta') {
+      if (pathname === '/webhook/meta' || pathname.startsWith('/webhook/meta/')) {
+        const webhookBotId = pathname.startsWith('/webhook/meta/') ? pathname.split('/')[3] : reqBotId;
+        const botCfg = loadConfig(webhookBotId);
         if (req.method === 'GET') {
-          const verification = MetaDMsHandler.handleVerification(req.url, config);
+          const verification = MetaDMsHandler.handleVerification(req.url, botCfg);
           res.writeHead(verification.status, { 'Content-Type': 'text/plain' });
           res.end(verification.body);
           return;
         }
         if (req.method === 'POST') {
           const body = await parseJsonBody(req);
-          const result = await MetaDMsHandler.handleWebhook(body, config);
+          const result = await MetaDMsHandler.handleWebhook(body, botCfg);
           return sendJson(res, result.status, result);
         }
       }
 
       // ----------------------------------------------------
-      // 3. WEB CHAT / WIDGET API
+      // 3. WEB CHAT / WIDGET API (Multi-Tenant)
       // ----------------------------------------------------
       if (pathname === '/api/chat' && req.method === 'POST') {
         const body = await parseJsonBody(req);
+        const targetBotId = body.botId || reqBotId || 'default';
         const { message, sessionId, userName } = body;
 
-        const response = await botEngine.processMessage({
+        const engine = getBotEngine(targetBotId);
+        const response = await engine.processMessage({
           channel: 'web',
           userId: sessionId || 'web_user_' + Date.now(),
           userName: userName || 'Visitante Web',
@@ -128,21 +140,41 @@ export function createServer(customConfig = null) {
       }
 
       // ----------------------------------------------------
-      // 4. ADMIN DASHBOARD REST APIs
+      // 4. MULTI-TENANT BOT MANAGEMENT APIs
+      // ----------------------------------------------------
+      // List all bots
+      if (pathname === '/api/bots' && req.method === 'GET') {
+        const bots = listBots();
+        return sendJson(res, 200, { bots });
+      }
+
+      // Create new bot instance
+      if (pathname === '/api/bots' && req.method === 'POST') {
+        const body = await parseJsonBody(req);
+        if (!body.botId) {
+          return sendJson(res, 400, { error: 'Se requiere botId' });
+        }
+        const created = createBotInstance(body.botId, body.config || {});
+        return sendJson(res, 201, { success: true, bot: created });
+      }
+
+      // ----------------------------------------------------
+      // 5. ADMIN DASHBOARD REST APIs (Bot-Aware)
       // ----------------------------------------------------
       // Overview & KPIs
       if (pathname === '/api/overview' && req.method === 'GET') {
+        const botCfg = loadConfig(reqBotId);
         const metrics = db.getOverviewMetrics();
         return sendJson(res, 200, {
-          bot: config.bot,
-          business: config.business,
+          bot: botCfg.bot,
+          business: botCfg.business,
           metrics,
           channels: {
-            whatsapp: config.channels.whatsapp.enabled,
-            telegram: config.channels.telegram.enabled,
-            instagram: config.channels.instagram.enabled,
-            messenger: config.channels.messenger.enabled,
-            web: config.channels.web.enabled
+            whatsapp: botCfg.channels.whatsapp.enabled,
+            telegram: botCfg.channels.telegram.enabled,
+            instagram: botCfg.channels.instagram.enabled,
+            messenger: botCfg.channels.messenger.enabled,
+            web: botCfg.channels.web.enabled
           }
         });
       }
@@ -181,11 +213,12 @@ export function createServer(customConfig = null) {
           content: `[Asesor Humano]: ${body.text}`
         });
 
-        // If it's a telegram or whatsapp channel, send outbound message
+        // Outbound messaging
         const conv = db.getConversation(convId);
-        if (conv?.channel === 'telegram' && config.channels.telegram.botToken) {
+        const botCfg = loadConfig(conv?.botId || reqBotId);
+        if (conv?.channel === 'telegram' && botCfg.channels.telegram.botToken) {
           await TelegramHandler.sendMessage({
-            botToken: config.channels.telegram.botToken,
+            botToken: botCfg.channels.telegram.botToken,
             chatId: conv.userId,
             text: body.text
           });
@@ -234,73 +267,81 @@ export function createServer(customConfig = null) {
 
       // Knowledge Base Documents List
       if (pathname === '/api/kb' && req.method === 'GET') {
-        const docs = kb.listDocuments();
+        const currentKb = getKnowledgeBase(reqBotId);
+        const docs = currentKb.listDocuments();
         return sendJson(res, 200, { documents: docs });
       }
 
       // Read single KB document
       if (pathname.startsWith('/api/kb/') && req.method === 'GET') {
+        const currentKb = getKnowledgeBase(reqBotId);
         const filename = decodeURIComponent(pathname.slice('/api/kb/'.length));
-        const doc = kb.documents.find(d => d.filename === filename);
+        const doc = currentKb.documents.find(d => d.filename === filename);
         if (!doc) return sendJson(res, 404, { error: 'Documento no encontrado' });
         return sendJson(res, 200, { filename: doc.filename, content: doc.rawContent });
       }
 
       // Save KB Document
       if (pathname === '/api/kb' && req.method === 'POST') {
+        const currentKb = getKnowledgeBase(reqBotId);
         const body = await parseJsonBody(req);
-        const result = kb.saveDocument(body.filename, body.content);
+        const result = currentKb.saveDocument(body.filename, body.content);
         return sendJson(res, 200, result);
       }
 
       // Delete KB Document
       if (pathname.startsWith('/api/kb/') && req.method === 'DELETE') {
+        const currentKb = getKnowledgeBase(reqBotId);
         const filename = decodeURIComponent(pathname.slice('/api/kb/'.length));
-        const deleted = kb.deleteDocument(filename);
+        const deleted = currentKb.deleteDocument(filename);
         return sendJson(res, 200, { success: deleted });
       }
 
       // Config read & write
       if (pathname === '/api/config' && req.method === 'GET') {
-        return sendJson(res, 200, config);
+        const botCfg = loadConfig(reqBotId);
+        return sendJson(res, 200, botCfg);
       }
 
       if (pathname === '/api/config' && req.method === 'POST') {
         const body = await parseJsonBody(req);
-        config = Object.assign(config, body);
-        saveConfig(config);
-        botEngine.updateConfig(config);
-        return sendJson(res, 200, { success: true, config });
+        let botCfg = loadConfig(reqBotId);
+        botCfg = Object.assign(botCfg, body);
+        saveConfig(botCfg, null, reqBotId);
+        getBotEngine(reqBotId).updateConfig(botCfg);
+        return sendJson(res, 200, { success: true, config: botCfg });
       }
 
       // Playground / Test Chat Endpoint
       if (pathname === '/api/test/chat' && req.method === 'POST') {
         const body = await parseJsonBody(req);
-        const response = await botEngine.processMessage({
+        const targetBotId = body.botId || reqBotId || 'default';
+        const engine = getBotEngine(targetBotId);
+        const response = await engine.processMessage({
           channel: 'web',
-          userId: body.userId || 'simulator_user',
-          userName: body.userName || 'Usuario de Prueba',
-          text: body.message || 'Hola'
+          userId: 'sim_' + (body.sessionId || 'user_1'),
+          userName: 'Probador (Simulador)',
+          text: body.message
         });
         return sendJson(res, 200, response);
       }
 
-      // 404 Not Found
-      return sendJson(res, 404, { error: 'Ruta no encontrada' });
+      // 404
+      sendJson(res, 404, { error: 'Ruta no encontrada', pathname });
+
     } catch (err) {
       console.error('[Server Error]:', err);
-      return sendJson(res, 500, { error: 'Error interno del servidor', details: err.message });
+      sendJson(res, 500, { error: 'Error interno del servidor', message: err.message });
     }
   });
 
   return {
     server,
-    start: (port = null) => {
-      let listenPort = port || config.server?.port || parseInt(process.env.PORT || '3000', 10);
+    start: (port = 3000) => {
+      const listenPort = port || config.server?.port || 3000;
 
       const tryListen = (p) => {
-        server.removeAllListeners('error');
-        server.on('error', (err) => {
+        server.once('error', (err) => {
           if (err.code === 'EADDRINUSE') {
             console.log(`\x1b[38;5;208m[Aviso]\x1b[0m El puerto ${p} ya está ocupado. Intentando automáticamente en el puerto ${p + 1}...`);
             setTimeout(() => tryListen(p + 1), 200);
@@ -332,21 +373,24 @@ export function createServer(customConfig = null) {
   };
 }
 
-// Helpers
-function sendJson(res, status, data) {
-  res.writeHead(status, { 'Content-Type': 'application/json' });
-  res.end(JSON.stringify(data));
-}
-
 function serveStaticFile(res, filePath, contentType) {
   if (fs.existsSync(filePath)) {
-    const content = fs.readFileSync(filePath);
-    res.writeHead(200, { 'Content-Type': contentType });
-    res.end(content);
+    const stat = fs.statSync(filePath);
+    res.writeHead(200, {
+      'Content-Type': contentType,
+      'Content-Length': stat.size,
+      'Cache-Control': 'no-cache'
+    });
+    fs.createReadStream(filePath).pipe(res);
   } else {
     res.writeHead(404, { 'Content-Type': 'text/plain' });
-    res.end('File not found');
+    res.end('Not Found');
   }
+}
+
+function sendJson(res, statusCode, data) {
+  res.writeHead(statusCode, { 'Content-Type': 'application/json; charset=utf-8' });
+  res.end(JSON.stringify(data));
 }
 
 function parseJsonBody(req) {
@@ -357,7 +401,7 @@ function parseJsonBody(req) {
       try {
         resolve(body ? JSON.parse(body) : {});
       } catch (err) {
-        reject(err);
+        resolve({});
       }
     });
     req.on('error', reject);
@@ -371,10 +415,4 @@ function parseTextBody(req) {
     req.on('end', () => resolve(body));
     req.on('error', reject);
   });
-}
-
-// If run directly
-if (process.argv[1] && process.argv[1].endsWith('index.js')) {
-  const app = createServer();
-  app.start();
 }

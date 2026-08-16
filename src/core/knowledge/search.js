@@ -228,4 +228,26 @@ export class KnowledgeBase {
   }
 }
 
-export const kb = new KnowledgeBase();
+const kbRegistry = new Map();
+
+/**
+ * Get or instantiate KnowledgeBase for a specific botId
+ */
+export function getKnowledgeBase(botId = 'default', baseDir = process.cwd()) {
+  const cleanId = botId || 'default';
+  if (kbRegistry.has(cleanId)) {
+    return kbRegistry.get(cleanId);
+  }
+
+  let kbDir = path.join(baseDir, 'member', 'kb');
+  if (cleanId !== 'default') {
+    kbDir = path.join(baseDir, 'member', 'bots', cleanId, 'kb');
+  }
+
+  const instance = new KnowledgeBase(kbDir);
+  kbRegistry.set(cleanId, instance);
+  return instance;
+}
+
+export const kb = getKnowledgeBase('default');
+

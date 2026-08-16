@@ -1,10 +1,11 @@
 import fs from 'fs';
-import { loadConfig } from '../src/core/config.js';
+import { loadConfig, listBots } from '../src/core/config.js';
 import { db } from '../src/core/storage/db.js';
 import { kb } from '../src/core/knowledge/search.js';
 import { executeTool } from '../src/core/tools/registry.js';
 import { BotEngine } from '../src/core/engine.js';
 import { createServer } from '../src/server/index.js';
+import { createBotConversational } from '../skills/crear-bot.js';
 import { generateMonthlyReport } from '../skills/reporte.js';
 import { exportData } from '../skills/exportar.js';
 import { runMaintenance } from '../skills/mantenimiento.js';
@@ -159,6 +160,17 @@ async function runTests() {
 
   // Test 7: Skills & Agency Suite
   console.log('\n\x1b[38;5;220m[7/8] Probando Skills de Operación y Modo Agencia...\x1b[0m');
+  const createBotRes = await createBotConversational({
+    name: 'Barberia Filo Gold',
+    niche: 'barberia',
+    services: 'Corte ($20), Barba ($15)',
+    hours: '10am - 8pm'
+  });
+  assert(createBotRes.success && createBotRes.botId === 'barberia-filo-gold', 'Skill /crear-bot generó instancia multi-tenant aislada');
+
+  const botsList = listBots();
+  assert(botsList.length >= 2, `Listado multi-tenant contiene ${botsList.length} bots registrados`);
+
   const reportRes = await generateMonthlyReport();
   assert(reportRes.success && fs.existsSync(reportRes.path), 'Skill /reporte generó archivo Markdown');
 

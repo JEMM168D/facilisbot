@@ -60,13 +60,15 @@ export class BotDatabase {
 
   // ================= CONVERSATIONS =================
 
-  getOrCreateConversation(channel, userId, userName = '') {
+  getOrCreateConversation(channel, userId, userName = '', botId = 'default') {
+    const cleanBotId = botId || 'default';
     let conv = this.data.conversations.find(
-      c => c.channel === channel && c.userId === userId && c.status !== 'closed'
+      c => c.channel === channel && c.userId === userId && (c.botId || 'default') === cleanBotId && c.status !== 'closed'
     );
     if (!conv) {
       conv = {
         id: 'conv_' + crypto.randomUUID().slice(0, 8),
+        botId: cleanBotId,
         channel,
         userId,
         userName: userName || userId,

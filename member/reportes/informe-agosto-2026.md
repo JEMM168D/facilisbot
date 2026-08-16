@@ -1,23 +1,23 @@
 # 📊 Informe Mensual de Rendimiento · Mi Negocio
 **Período:** AGOSTO 2026  
 **Asistente IA:** Asistente Virtual (barberia)  
-**Generado:** 16/8/2026 13:30:49
+**Generado:** 16/8/2026 14:20:03
 
 ---
 
 ## 🚀 Resumen Ejecutivo
 Durante este mes, tu asistente de inteligencia artificial operó de forma continua para atender consultas, prospectos y solicitudes en todos tus canales:
 
-- **Total de conversaciones atendidas:** 4
-- **Tasa de resolución automática del bot:** **75.0%** (sin requerir intervención humana)
-- **Transferencias a equipo humano:** 1 (25.0%)
+- **Total de conversaciones atendidas:** 6
+- **Tasa de resolución automática del bot:** **83.3%** (sin requerir intervención humana)
+- **Transferencias a equipo humano:** 1 (16.7%)
 - **Nuevos prospectos / leads capturados:** **2**
-- **Costo aproximado de IA del mes:** **$0.0009 USD**
+- **Costo aproximado de IA del mes:** **$0.0010 USD**
 
 ---
 
 ## 📈 Valor Generado para el Negocio
-1. **Ahorro de Tiempo:** El asistente resolvió 3 consultas de forma 100% autónoma, ahorrando aproximadamente **0 horas** de atención manual.
+1. **Ahorro de Tiempo:** El asistente resolvió 5 consultas de forma 100% autónoma, ahorrando aproximadamente **0 horas** de atención manual.
 2. **Atención 24/7:** Clientes atendidos fuera de horario comercial sin esperas.
 3. **Captura Oportuna de Datos:** 2 prospectos registrados con nombre, contacto e interés directo para seguimiento comercial.
 

@@ -85,3 +85,12 @@ msg_f71a8c93,conv_3c2b2543,web,"Roberto",user,"Hola, ¿a qué hora abren y qué 
 msg_f7fa1a62,conv_3c2b2543,web,"Roberto",assistant,"¡Hola! Te doy la bienvenida a Mi Negocio. Soy Asistente Virtual, tu asistente virtual. ¿En qué te puedo ayudar hoy?",2026-08-16T19:30:48.910Z
 msg_e98ff0e3,conv_59a1f304,web,"Visitante Web",user,"Hola desde prueba de integración",2026-08-16T19:30:49.033Z
 msg_b9211a59,conv_59a1f304,web,"Visitante Web",assistant,"¡Hola! Te doy la bienvenida a Mi Negocio. Soy Asistente Virtual, tu asistente virtual. ¿En qué te puedo ayudar hoy?",2026-08-16T19:30:49.039Z
+msg_36b889e9,conv_f387c854,web,"Tester IA",user,"Hola, ¿cuál es su horario y qué servicios ofrecen?",2026-08-16T20:19:43.047Z
+msg_b2500fe4,conv_f387c854,web,"Tester IA",assistant,"¡Hola! Te doy la bienvenida a Dental Sonrisas. Soy Asistente Dental Sonrisas, tu asistente virtual. ¿En qué te puedo ayudar hoy?",2026-08-16T20:19:43.061Z
+msg_bdac8bb9,conv_2253024a,web,"Carlos Mendoza",user,"Hola, me gustaría saber precios de sus servicios",2026-08-16T20:20:02.951Z
+msg_5f4ac487,conv_3c2b2543,web,"Roberto",user,"Hola, ¿a qué hora abren y qué servicios ofrecen?",2026-08-16T20:20:02.981Z
+msg_3b5f037f,conv_3c2b2543,web,"Roberto",assistant,"¡Hola! Te doy la bienvenida a Mi Negocio. Soy Asistente Virtual, tu asistente virtual. ¿En qué te puedo ayudar hoy?",2026-08-16T20:20:02.994Z
+msg_bc075d1a,conv_59a1f304,web,"Visitante Web",user,"Hola desde prueba de integración",2026-08-16T20:20:03.124Z
+msg_49bb87a1,conv_59a1f304,web,"Visitante Web",assistant,"¡Hola! Te doy la bienvenida a Mi Negocio. Soy Asistente Virtual, tu asistente virtual. ¿En qué te puedo ayudar hoy?",2026-08-16T20:20:03.129Z
+msg_cc284336,conv_8e8b602f,web,"Tester IA",user,"Hola, ¿cuál es su horario y qué servicios ofrecen?",2026-08-16T20:20:03.236Z
+msg_06a72bb4,conv_8e8b602f,web,"Tester IA",assistant,"¡Hola! Te doy la bienvenida a Barberia Filo Gold. Soy Asistente Barberia Filo Gold, tu asistente virtual. ¿En qué te puedo ayudar hoy?",2026-08-16T20:20:03.246Z

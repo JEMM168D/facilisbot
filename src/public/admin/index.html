@@ -20,6 +20,13 @@
       </div>
     </div>
 
+    <!-- Multi-tenant Bot Selector -->
+    <div style="padding: 0 14px 10px 14px;">
+      <select id="botSwitcher" class="form-control" style="background: rgba(255,255,255,0.06); font-size: 12px; height: 32px; border-color: rgba(255,255,255,0.1);" onchange="switchActiveBot(this.value)">
+        <option value="default">⚡ Bot Principal</option>
+      </select>
+    </div>
+
     <ul class="nav-list">
       <li class="nav-item active" data-tab="overview">
         <span class="icon">📊</span> Resumen
