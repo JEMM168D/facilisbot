@@ -3,24 +3,23 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Panel de Administración · FacilisBot</title>
+  <title>FacilisBot · Panel del Agente</title>
   <link rel="stylesheet" href="/admin/style.css">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
 </head>
 <body>
 
 <!-- Login Overlay -->
-<div id="loginOverlay" style="display:flex; position:fixed; inset:0; z-index:9999; background:var(--bg-primary, #0a0a0f); align-items:center; justify-content:center;">
-  <div style="background:var(--bg-card, #12121a); border:1px solid var(--border-color, #1e1e2e); border-radius:20px; padding:48px 40px; max-width:400px; width:90%; text-align:center;">
-    <div style="font-size:56px; margin-bottom:16px;">⚡</div>
-    <h1 style="font-size:24px; margin-bottom:4px; color:var(--text-main, #f0f0f5);">FacilisBot</h1>
-    <p style="color:var(--text-muted, #6b6b80); font-size:14px; margin-bottom:32px;">Panel de Administración</p>
-    <div style="margin-bottom:16px;">
-      <input type="password" id="loginAccessCode" class="form-control" placeholder="Código de acceso" style="text-align:center; font-size:16px; padding:14px;" onkeydown="if(event.key==='Enter') attemptLogin()">
+<div id="loginOverlay" style="display:flex; position:fixed; inset:0; z-index:9999; background:var(--bg-main, #0c0a09); align-items:center; justify-content:center;">
+  <div style="background:var(--bg-card, #151310); border:1px solid var(--border-color, #24201c); border-radius:16px; padding:40px 36px; max-width:380px; width:90%; text-align:center;">
+    <div style="font-size:40px; margin-bottom:12px;">⚡</div>
+    <h1 style="font-size:20px; margin-bottom:4px; color:var(--text-main, #f5f0eb);">FacilisBot AgentOS</h1>
+    <p style="color:var(--text-muted, #9e9185); font-size:13px; margin-bottom:28px;">Panel de Control del Asistente</p>
+    <div style="margin-bottom:14px;">
+      <input type="password" id="loginAccessCode" class="form-control" placeholder="Código de acceso" style="text-align:center; font-size:15px; padding:12px;" onkeydown="if(event.key==='Enter') attemptLogin()">
     </div>
-    <div id="loginError" style="color:#ff4444; font-size:13px; margin-bottom:12px; display:none;"></div>
-    <button class="btn btn-primary" onclick="attemptLogin()" style="width:100%; padding:14px; font-size:15px;">Entrar</button>
-    <p style="color:var(--text-dim, #3a3a4a); font-size:11px; margin-top:24px;">Motor de chatbots inteligentes con IA</p>
+    <div id="loginError" style="color:var(--accent-red, #f87171); font-size:12px; margin-bottom:12px; display:none;"></div>
+    <button class="btn btn-primary" onclick="attemptLogin()" style="width:100%; padding:12px; font-size:14px;">Entrar al Panel</button>
   </div>
 </div>
 
@@ -28,176 +27,570 @@
   <!-- Sidebar Navigation -->
   <aside class="sidebar">
     <div class="brand">
-      <div class="brand-icon">⚡</div>
+      <div class="brand-icon">&gt;_</div>
       <div class="brand-info">
         <h2 id="sidebarBotName">FacilisBot</h2>
-        <p id="sidebarStatus">En línea 24/7</p>
+        <p>PANEL · <span style="color:var(--primary);">FREE</span></p>
       </div>
     </div>
 
     <!-- Multi-tenant Bot Selector -->
-    <div style="padding: 0 14px 10px 14px;">
-      <select id="botSwitcher" class="form-control" style="background: rgba(255,255,255,0.06); font-size: 12px; height: 32px; border-color: rgba(255,255,255,0.1);" onchange="switchActiveBot(this.value)">
+    <div style="padding: 0 4px 10px 4px;">
+      <select id="botSwitcher" class="form-control" style="font-size: 11px; height: 30px; font-family: var(--font-mono);" onchange="switchActiveBot(this.value)">
         <option value="default">⚡ Bot Principal</option>
       </select>
     </div>
 
+    <div class="nav-section-title">INICIO</div>
     <ul class="nav-list">
-      <li class="nav-item active" data-tab="overview">
-        <span class="icon">📊</span> Resumen
+      <li class="nav-item active" data-tab="resumen" onclick="navigateTo('resumen')">
+        <div class="nav-left"><span>📊</span> <span>Resumen</span></div>
       </li>
-      <li class="nav-item" data-tab="inbox">
-        <span class="icon">💬</span> Bandeja de Entrada
+    </ul>
+
+    <div class="nav-section-title">BANDEJA</div>
+    <ul class="nav-list">
+      <li class="nav-item" data-tab="inbox" onclick="navigateTo('inbox')">
+        <div class="nav-left"><span>💬</span> <span>Conversaciones</span></div>
       </li>
-      <li class="nav-item" data-tab="leads">
-        <span class="icon">👥</span> CRM de Leads
+      <li class="nav-item" data-tab="leads" onclick="navigateTo('leads')">
+        <div class="nav-left"><span>👥</span> <span>Leads</span></div>
       </li>
-      <li class="nav-item" data-tab="kb">
-        <span class="icon">📚</span> Base de Conocimiento
+      <li class="nav-item" data-tab="cobros" onclick="navigateTo('cobros')">
+        <div class="nav-left"><span>💳</span> <span>Cobros</span></div>
+        <span class="badge-pro">PRO</span>
       </li>
-      <li class="nav-item" data-tab="channels">
-        <span class="icon">🔌</span> Conexiones
+      <li class="nav-item" data-tab="tickets" onclick="navigateTo('tickets')">
+        <div class="nav-left"><span>🎫</span> <span>Tickets</span></div>
       </li>
-      <li class="nav-item" data-tab="simulator">
-        <span class="icon">🧪</span> Simulador
+      <li class="nav-item" data-tab="resenas" onclick="navigateTo('resenas')">
+        <div class="nav-left"><span>⭐</span> <span>Reseñas</span></div>
+        <span class="badge-pro">PRO</span>
       </li>
-      <li class="nav-item" data-tab="settings">
-        <span class="icon">⚙️</span> Configuración
+      <li class="nav-item" data-tab="campanas" onclick="navigateTo('campanas')">
+        <div class="nav-left"><span>📢</span> <span>Campañas</span></div>
+        <span class="badge-pro">PRO</span>
+      </li>
+    </ul>
+
+    <div class="nav-section-title">MI AGENTE</div>
+    <ul class="nav-list">
+      <li class="nav-item" data-tab="flujo" onclick="navigateTo('flujo')">
+        <div class="nav-left"><span>⚙️</span> <span>Flujo</span></div>
+      </li>
+      <li class="nav-item" data-tab="kb" onclick="navigateTo('kb')">
+        <div class="nav-left"><span>📚</span> <span>Conocimiento</span></div>
+      </li>
+      <li class="nav-item" data-tab="conexiones" onclick="navigateTo('conexiones')">
+        <div class="nav-left"><span>🔌</span> <span>Conexiones</span></div>
+      </li>
+      <li class="nav-item" data-tab="simulator" onclick="navigateTo('simulator')">
+        <div class="nav-left"><span>🧪</span> <span>Simulador</span></div>
+      </li>
+      <li class="nav-item" data-tab="settings" onclick="navigateTo('settings')">
+        <div class="nav-left"><span>⚙️</span> <span>Ajustes & IA</span></div>
       </li>
     </ul>
 
     <div class="sidebar-footer">
-      <span>FacilisBot v1.0</span>
-      <span style="color: var(--accent-gold); font-family: var(--font-mono);" id="sidebarNiche">starter</span>
+      <div style="display:flex; justify-content:space-between; align-items:center; color:var(--text-muted);">
+        <span>Panel del bot</span>
+        <span style="color:var(--accent-green);">● activa</span>
+      </div>
+      <button class="btn btn-secondary btn-sm" onclick="logout()" style="width:100%; margin-top:4px;">Cerrar Sesión</button>
     </div>
   </aside>
 
   <!-- Main Content Views -->
   <main class="main-content">
+    <!-- Top Bar with breadcrumbs and live status -->
+    <div class="top-bar">
+      <div class="breadcrumb" id="topBreadcrumb">MI AGENTE / FLUJO</div>
+      <div class="status-badge">
+        <span class="status-dot"></span>
+        <span>BOT EN LÍNEA</span>
+      </div>
+    </div>
 
-    <!-- 1. OVERVIEW VIEW -->
-    <section id="view-overview" class="view-section active">
+    <!-- ======================================================== -->
+    <!-- 1. VIEW FLUJO (Agent Flow Visualizer)                    -->
+    <!-- ======================================================== -->
+    <section id="view-flujo" class="view-section active">
       <div class="section-header">
         <div>
-          <h1>Panel de Control</h1>
-          <p>Métricas de atención, rendimiento del asistente y actividad en tiempo real.</p>
-        </div>
-        <button class="btn btn-secondary" onclick="loadOverview()">↻ Actualizar</button>
-      </div>
-
-      <div class="kpi-grid">
-        <div class="kpi-card">
-          <div class="kpi-title">Conversaciones Totales</div>
-          <div class="kpi-value" id="kpiTotalConvs">0</div>
-          <div class="kpi-footer" id="kpiConvs24h">+0 en las últimas 24h</div>
-        </div>
-        <div class="kpi-card">
-          <div class="kpi-title">Mensajes Atendidos 24h</div>
-          <div class="kpi-value" id="kpiMsgs24h">0</div>
-          <div class="kpi-footer" style="color: var(--accent-gold);">En tiempo real</div>
-        </div>
-        <div class="kpi-card">
-          <div class="kpi-title">Leads Capturados</div>
-          <div class="kpi-value" id="kpiTotalLeads" style="color: var(--accent-green);">0</div>
-          <div class="kpi-footer">Listos para seguimiento</div>
-        </div>
-        <div class="kpi-card">
-          <div class="kpi-title">Resolución del Bot</div>
-          <div class="kpi-value" id="kpiResolutionRate" style="color: var(--accent-blue);">100%</div>
-          <div class="kpi-footer" id="kpiEscalatedCount">0 transferencias humanas</div>
-        </div>
-        <div class="kpi-card">
-          <div class="kpi-title">Costo Estimado IA</div>
-          <div class="kpi-value" id="kpiCostUsd">$0.0000</div>
-          <div class="kpi-footer" id="kpiTotalTokens">0 tokens procesados</div>
+          <h1>Flujo</h1>
+          <p>Así funciona tu bot por dentro — una radiografía en vivo. Haz clic en cualquier nodo para ver su configuración.</p>
         </div>
       </div>
 
-      <!-- Channel Status Card -->
-      <div class="panel-card">
-        <h3 class="panel-title">🔌 Estado de Canales Conectados</h3>
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-top: 14px;">
-          <div style="background: rgba(255,255,255,0.02); padding: 14px; border-radius: 12px; border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between;">
-            <span>💬 WhatsApp</span>
-            <span class="badge" id="badgeStatusWhatsApp">Desconectado</span>
+      <div class="flow-container">
+        <div class="flow-legend">
+          <div class="flow-legend-item"><span class="legend-line-orange"></span> flujo de mensajes</div>
+          <div class="flow-legend-item"><span class="legend-line-dashed"></span> recursos del agente</div>
+          <div class="flow-legend-item"><span class="legend-dot-green"></span> actividad en los últimos 5 min</div>
+        </div>
+
+        <!-- Primary Flow Pipeline -->
+        <div class="flow-pipeline-row">
+          <!-- Web Node -->
+          <div class="flow-node active-node" onclick="showNodeDetails('canal')">
+            <div class="flow-node-header">
+              <span class="flow-node-title">🌐 web</span>
+              <span class="node-badge-active">ACTIVO</span>
+            </div>
+            <div class="flow-node-desc" id="flujoConvsCount">6 conversaciones</div>
           </div>
-          <div style="background: rgba(255,255,255,0.02); padding: 14px; border-radius: 12px; border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between;">
-            <span>✈️ Telegram</span>
-            <span class="badge" id="badgeStatusTelegram">Desconectado</span>
+
+          <span class="flow-connector-arrow">──►</span>
+
+          <!-- Buffer Node -->
+          <div class="flow-node" onclick="showNodeDetails('buffer')">
+            <div class="flow-node-header">
+              <span class="flow-node-title">☵ Buffer</span>
+            </div>
+            <div class="flow-node-desc">agrupa mensajes · 15 s</div>
           </div>
-          <div style="background: rgba(255,255,255,0.02); padding: 14px; border-radius: 12px; border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between;">
-            <span>📸 Instagram DMs</span>
-            <span class="badge" id="badgeStatusInstagram">Desconectado</span>
+
+          <span class="flow-connector-arrow">──►</span>
+
+          <!-- Agent Engine Node -->
+          <div class="flow-node active-node" style="border-color: var(--primary); background: #201a14;" onclick="showNodeDetails('agente')">
+            <div class="flow-node-header">
+              <span class="flow-node-title">⚙️ Agente</span>
+            </div>
+            <div class="flow-node-desc">prompt automático · máx 6 pasos</div>
+            <div class="flow-node-footer" id="flujoTurnosCount">8 turnos / 30d</div>
           </div>
-          <div style="background: rgba(255,255,255,0.02); padding: 14px; border-radius: 12px; border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between;">
-            <span>🌐 Web Widget</span>
-            <span class="badge badge-active">Activo</span>
+
+          <span class="flow-connector-arrow">──►</span>
+
+          <!-- Response Node -->
+          <div class="flow-node" onclick="showNodeDetails('respuesta')">
+            <div class="flow-node-header">
+              <span class="flow-node-title">✉️ Respuesta</span>
+            </div>
+            <div class="flow-node-desc">máx 3 msgs · 1.8 s entre msgs</div>
+          </div>
+        </div>
+
+        <!-- Branch Models & Function Calling Tools Grid -->
+        <div class="flow-branches-grid">
+          <!-- Modelo -->
+          <div class="flow-tool-node" onclick="showNodeDetails('modelo')">
+            <div class="flow-tool-title">🧠 Modelo</div>
+            <div class="flow-tool-stats" style="color:var(--accent-gold);" id="flujoModelName">gemini-3.5-flash-lite</div>
+          </div>
+
+          <!-- Memoria D1 -->
+          <div class="flow-tool-node" onclick="showNodeDetails('memoria')">
+            <div class="flow-tool-title">💾 Memoria</div>
+            <div class="flow-tool-stats">D1 · últimos 20 msgs</div>
+          </div>
+
+          <!-- searchKb -->
+          <div class="flow-tool-node" onclick="showNodeDetails('tool-searchkb')">
+            <div class="flow-tool-title">📖 searchKb</div>
+            <div class="flow-tool-stats" id="flujoToolKbCalls">0 llamadas / 30d</div>
+          </div>
+
+          <!-- handoffHuman -->
+          <div class="flow-tool-node" onclick="showNodeDetails('tool-handoff')">
+            <div class="flow-tool-title">👤 handoffHuman</div>
+            <div class="flow-tool-stats" id="flujoToolHandoffCalls">0 llamadas / 30d</div>
+          </div>
+
+          <!-- pauseBot -->
+          <div class="flow-tool-node" onclick="showNodeDetails('tool-pause')">
+            <div class="flow-tool-title">⏸️ pauseBot</div>
+            <div class="flow-tool-stats">0 llamadas / 30d</div>
+          </div>
+
+          <!-- snoozeUser -->
+          <div class="flow-tool-node" onclick="showNodeDetails('tool-snooze')">
+            <div class="flow-tool-title">⏰ snoozeUser</div>
+            <div class="flow-tool-stats">0 llamadas / 30d</div>
+          </div>
+
+          <!-- captureLead -->
+          <div class="flow-tool-node" onclick="showNodeDetails('tool-lead')">
+            <div class="flow-tool-title">🎯 captureLead</div>
+            <div class="flow-tool-stats" id="flujoToolLeadCalls">0 llamadas / 30d</div>
+          </div>
+        </div>
+
+        <div style="font-size:11px; color:var(--text-dim); text-align:center; font-family:var(--font-mono);">
+          El flujo es fijo — es una radiografía honesta, no un editor. Los cambios de cada nodo aplican desde el siguiente mensaje.
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================================================== -->
+    <!-- 2. VIEW RESUMEN (12 Superpoderes & Analytics)            -->
+    <!-- ======================================================== -->
+    <section id="view-resumen" class="view-section">
+      <div class="section-header">
+        <div>
+          <h1>Resumen</h1>
+          <p>Superpoderes activos del asistente y métricas de desempeño comercial en vivo.</p>
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="loadOverview()">↻ Refrescar</button>
+      </div>
+
+      <!-- 12 Superpowers Grid -->
+      <div>
+        <div style="font-size: 11px; font-weight: 700; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 12px;">
+          LOS 12 SUPERPODERES
+        </div>
+        <div class="superpowers-grid">
+          <!-- 1. Blindaje Anti-Invento -->
+          <div class="superpower-card">
+            <div class="superpower-header">
+              <div class="superpower-icon">🛡️</div>
+              <div class="superpower-title">Blindaje anti-invento</div>
+            </div>
+            <div class="superpower-desc">Verifica cada respuesta contra tu info antes de enviarla — si no está seguro, dice "déjame confirmarlo" en vez de inventar.</div>
+          </div>
+
+          <!-- 2. Vigilante -->
+          <div class="superpower-card">
+            <div class="superpower-header">
+              <div class="superpower-icon">🚨</div>
+              <div class="superpower-title">Vigilante</div>
+            </div>
+            <div class="superpower-desc">Te avisa al celular cuando un cliente se enoja o una venta importante está en riesgo de perderse.</div>
+          </div>
+
+          <!-- 3. Cazador de Ventas -->
+          <div class="superpower-card">
+            <div class="superpower-header">
+              <div class="superpower-icon">🎯</div>
+              <div class="superpower-title">Cazador de ventas</div>
+            </div>
+            <div class="superpower-desc">Le escribe solo al cliente que preguntó y se enfrió (3-20h), en tu tono, y te avisa cuando re-engancha una venta caliente.</div>
+          </div>
+
+          <!-- 4. Handoff que Atina -->
+          <div class="superpower-card">
+            <div class="superpower-header">
+              <div class="superpower-icon">📞</div>
+              <div class="superpower-title">Handoff que atina</div>
+            </div>
+            <div class="superpower-desc">Cuando alguien necesita un humano, te lo pasa por WhatsApp o Telegram con todo el resumen y contexto.</div>
+          </div>
+
+          <!-- 5. Oído y Vista (Multimodal) -->
+          <div class="superpower-card">
+            <div class="superpower-header">
+              <div class="superpower-icon">👁️</div>
+              <div class="superpower-title">Oído y vista</div>
+            </div>
+            <div class="superpower-desc">Entiende notas de voz y LEE imágenes (comprobantes de pago, productos) para responder mejor con Gemini Multimodal.</div>
+          </div>
+
+          <!-- 6. Voz de Marca -->
+          <div class="superpower-card">
+            <div class="superpower-header">
+              <div class="superpower-icon">🎙️</div>
+              <div class="superpower-title">Voz de marca</div>
+            </div>
+            <div class="superpower-desc">Ajusta el tono del bot a tu marca — cercano, profesional, cálido o directo, sin sonar robótico.</div>
+          </div>
+
+          <!-- 7. Reporte Diario -->
+          <div class="superpower-card">
+            <div class="superpower-header">
+              <div class="superpower-icon">📅</div>
+              <div class="superpower-title">Reporte diario</div>
+            </div>
+            <div class="superpower-desc">Cada mañana genera el resumen ejecutivo: leads capturados, conversaciones y ventas del día.</div>
+          </div>
+
+          <!-- 8. Multi-Idioma -->
+          <div class="superpower-card">
+            <div class="superpower-header">
+              <div class="superpower-icon">🌐</div>
+              <div class="superpower-title">Multi-idioma</div>
+            </div>
+            <div class="superpower-desc">Detecta y responde en el idioma del cliente (español, inglés, portugués, francés) de forma 100% automática.</div>
+          </div>
+
+          <!-- 9. Encuestas de Satisfacción -->
+          <div class="superpower-card">
+            <div class="superpower-header">
+              <div class="superpower-icon">😊</div>
+              <div class="superpower-title">Encuestas de satisfacción</div>
+            </div>
+            <div class="superpower-desc">Tras resolver una consulta, pide una calificación amigable y te alerta si la experiencia fue baja.</div>
+          </div>
+
+          <!-- 10. Reactivación de Leads Fríos -->
+          <div class="superpower-card">
+            <div class="superpower-header">
+              <div class="superpower-icon">🔥</div>
+              <div class="superpower-title">Reactivación de leads fríos</div>
+            </div>
+            <div class="superpower-desc">Re-engancha a los prospectos que se enfriaron hace días con propuestas y recordatorios automáticos.</div>
+          </div>
+
+          <!-- 11. Reseñas -->
+          <div class="superpower-card">
+            <div class="superpower-header">
+              <div class="superpower-icon">⭐</div>
+              <div class="superpower-title">Reseñas</div>
+            </div>
+            <div class="superpower-desc">Le pide reseña en Google Maps a los clientes contentos con tu link directo — más prueba social sola.</div>
+          </div>
+
+          <!-- 12. Cobros por WhatsApp -->
+          <div class="superpower-card">
+            <div class="superpower-header">
+              <div class="superpower-icon">💳</div>
+              <div class="superpower-title">Cobros por chat</div>
+            </div>
+            <div class="superpower-desc">Manda links de pago (Stripe / Mercado Pago) por el mismo chat y cierra la venta al instante.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Panel de Análisis Grid -->
+      <div style="margin-top: 14px;">
+        <div style="font-size: 11px; font-weight: 700; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 12px;">
+          PANEL DE ANÁLISIS
+        </div>
+        <div class="superpowers-grid">
+          <div class="superpower-card" onclick="navigateTo('inbox')">
+            <div class="superpower-header">
+              <div class="superpower-icon" style="color:var(--accent-gold);">🔍</div>
+              <div class="superpower-title">Analista IA / Insights</div>
+            </div>
+            <div class="superpower-desc">Resumen de cada conversación: qué querían, objeciones y oportunidad de venta detectada.</div>
+          </div>
+
+          <div class="superpower-card">
+            <div class="superpower-header">
+              <div class="superpower-icon" style="color:var(--accent-green);">📈</div>
+              <div class="superpower-title">Estadísticas</div>
+            </div>
+            <div class="superpower-desc" id="resumenStatsConvs">Volumen: 0 conversaciones, resolución del 100%.</div>
+          </div>
+
+          <div class="superpower-card">
+            <div class="superpower-header">
+              <div class="superpower-icon" style="color:var(--primary);">💰</div>
+              <div class="superpower-title">Costos</div>
+            </div>
+            <div class="superpower-desc" id="resumenCostosDesc">Gasto estimado en IA: $0.0000 USD (0 tokens).</div>
+          </div>
+
+          <div class="superpower-card" onclick="navigateTo('kb')">
+            <div class="superpower-header">
+              <div class="superpower-icon" style="color:var(--accent-blue);">⚡</div>
+              <div class="superpower-title">Mejoras</div>
+            </div>
+            <div class="superpower-desc">Detecta huecos en la base de conocimiento y sugiere respuestas oficiales.</div>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- 2. INBOX VIEW -->
+    <!-- ======================================================== -->
+    <!-- 3. VIEW CONEXIONES (Grid of Channels)                    -->
+    <!-- ======================================================== -->
+    <section id="view-conexiones" class="view-section">
+      <div class="section-header">
+        <div>
+          <h1>Conexiones</h1>
+          <p>Canales de mensajería conectados y endpoints de webhooks para tu asistente.</p>
+        </div>
+      </div>
+
+      <div class="connections-grid">
+        <!-- Sitio Web -->
+        <div class="connection-card">
+          <div class="connection-header">
+            <div class="connection-brand">
+              <span style="font-size: 20px;">🌐</span>
+              <span>Sitio web</span>
+            </div>
+            <span class="node-badge-active">Conectado</span>
+          </div>
+          <div class="connection-desc">
+            Burbuja de chat en tu página — atiende a quien ya está viendo tu negocio.
+          </div>
+          <div class="form-group">
+            <label style="font-size:10px; text-transform:uppercase; color:var(--text-dim);">Pega esto antes de &lt;/body&gt; en tu sitio:</label>
+            <textarea id="widgetSnippet" class="form-control" style="height: 70px; font-family: var(--font-mono); font-size: 11px;" readonly></textarea>
+            <button class="btn btn-secondary btn-sm" style="margin-top:6px;" onclick="copyWidgetSnippet()">📋 Copiar Código</button>
+          </div>
+          <div style="font-size: 11px; color: var(--text-dim); line-height: 1.4;">
+            Para cambiar el look sin desplegar nada, agrégale atributos: <code>data-tema</code> (suave · minimal · oscuro · vidrio), <code>data-color</code>, <code>data-posicion</code>.
+          </div>
+        </div>
+
+        <!-- Telegram -->
+        <div class="connection-card">
+          <div class="connection-header">
+            <div class="connection-brand">
+              <span style="font-size: 20px;">✈️</span>
+              <span>Telegram</span>
+            </div>
+            <span class="badge-pro" id="badgeTgStatus">Sin conectar</span>
+          </div>
+          <div class="connection-desc">
+            Bot de Telegram — gratis y el más rápido de conectar con @BotFather.
+          </div>
+          <div class="form-group">
+            <label>Telegram Bot Token:</label>
+            <input type="text" id="tgBotToken" class="form-control" placeholder="123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ">
+          </div>
+          <div class="form-group">
+            <label style="font-size:10px; color:var(--text-dim); text-transform:uppercase;">Webhook URL:</label>
+            <input type="text" id="tgWebhookUrl" class="form-control" readonly style="font-family:var(--font-mono); font-size:11px; color:var(--accent-gold);">
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="saveTelegramChannel()">Guardar Telegram</button>
+        </div>
+
+        <!-- WhatsApp Oficial (Meta Cloud API) -->
+        <div class="connection-card">
+          <div class="connection-header">
+            <div class="connection-brand">
+              <span style="font-size: 20px;">💬</span>
+              <span>WhatsApp (Oficial · Cloud API)</span>
+            </div>
+            <span class="badge-pro" id="badgeWaCloudStatus">Sin conectar</span>
+          </div>
+          <div class="connection-desc">
+            WhatsApp directo con Meta, sin intermediario — mejor margen y estabilidad.
+          </div>
+          <div class="form-group">
+            <label>Phone Number ID:</label>
+            <input type="text" id="waPhoneId" class="form-control" placeholder="1098237498123">
+          </div>
+          <div class="form-group">
+            <label>Access Token Permanente:</label>
+            <input type="password" id="waAccessToken" class="form-control" placeholder="EAAB...">
+          </div>
+          <div class="form-group">
+            <label style="font-size:10px; color:var(--text-dim); text-transform:uppercase;">Webhook URL:</label>
+            <input type="text" id="waWebhookUrl" class="form-control" readonly style="font-family:var(--font-mono); font-size:11px; color:var(--accent-gold);">
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="saveWhatsAppChannel()">Guardar WhatsApp Oficial</button>
+        </div>
+
+        <!-- WhatsApp (Twilio) -->
+        <div class="connection-card">
+          <div class="connection-header">
+            <div class="connection-brand">
+              <span style="font-size: 20px;">🟢</span>
+              <span>WhatsApp (Twilio)</span>
+            </div>
+            <span class="badge-pro">Sin conectar</span>
+          </div>
+          <div class="connection-desc">
+            WhatsApp Business vía Twilio — ideal para números ya aprobados en Twilio.
+          </div>
+          <div class="form-group">
+            <label style="font-size:10px; color:var(--text-dim); text-transform:uppercase;">Webhook Ingress:</label>
+            <input type="text" id="twilioWebhookUrl" class="form-control" readonly style="font-family:var(--font-mono); font-size:11px; color:var(--accent-gold);">
+          </div>
+          <button class="btn btn-secondary btn-sm" onclick="copyTwilioWebhook()">📋 Copiar Webhook Twilio</button>
+        </div>
+
+        <!-- Instagram + Messenger -->
+        <div class="connection-card">
+          <div class="connection-header">
+            <div class="connection-brand">
+              <span style="font-size: 20px;">📸</span>
+              <span>Instagram + Messenger (Meta)</span>
+            </div>
+            <span class="badge-pro">Sin conectar</span>
+          </div>
+          <div class="connection-desc">
+            DMs de Instagram y Messenger con la API oficial de Meta Graph.
+          </div>
+          <div class="form-group">
+            <label style="font-size:10px; color:var(--text-dim); text-transform:uppercase;">Webhook Ingress:</label>
+            <input type="text" id="metaWebhookUrl" class="form-control" readonly style="font-family:var(--font-mono); font-size:11px; color:var(--accent-gold);">
+          </div>
+          <button class="btn btn-secondary btn-sm" onclick="copyMetaWebhook()">📋 Copiar Webhook Meta</button>
+        </div>
+
+        <!-- ManyChat / Webhooks Externos -->
+        <div class="connection-card">
+          <div class="connection-header">
+            <div class="connection-brand">
+              <span style="font-size: 20px;">🔌</span>
+              <span>ManyChat & Webhooks</span>
+            </div>
+            <span class="badge-pro">Sin conectar</span>
+          </div>
+          <div class="connection-desc">
+            Si ya usas ManyChat, el bot puede vivir como un External Request detrás de tus flujos.
+          </div>
+          <div class="form-group">
+            <label style="font-size:10px; color:var(--text-dim); text-transform:uppercase;">Chat API Endpoint:</label>
+            <input type="text" id="manychatEndpointUrl" class="form-control" readonly style="font-family:var(--font-mono); font-size:11px; color:var(--accent-gold);">
+          </div>
+          <button class="btn btn-secondary btn-sm" onclick="copyChatApiEndpoint()">📋 Copiar Endpoint API</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================================================== -->
+    <!-- 4. VIEW INBOX (Conversations)                            -->
+    <!-- ======================================================== -->
     <section id="view-inbox" class="view-section">
       <div class="section-header">
         <div>
-          <h1>Bandeja de Entrada en Vivo</h1>
-          <p>Supervisa conversaciones de WhatsApp, Telegram, Instagram y Web en un solo lugar.</p>
+          <h1>Bandeja de Entrada</h1>
+          <p>Supervisa y responde conversaciones de WhatsApp, Telegram, Instagram y Web en tiempo real.</p>
         </div>
-        <div style="display: flex; gap: 8px;">
-          <button class="btn btn-secondary btn-sm" onclick="loadConversations()">↻ Refrescar</button>
-        </div>
+        <button class="btn btn-secondary btn-sm" onclick="loadConversations()">↻ Refrescar</button>
       </div>
 
       <div class="inbox-layout">
-        <!-- Thread List -->
-        <div class="thread-list" id="threadList">
-          <div style="padding: 20px; text-align: center; color: var(--text-dim);">Cargando conversaciones...</div>
+        <div class="thread-list" id="conversationsList">
+          <div style="padding:20px; text-align:center; color:var(--text-dim);">Cargando conversaciones...</div>
         </div>
-
-        <!-- Chat Viewer -->
         <div class="chat-viewer">
           <div class="chat-header">
             <div>
-              <strong id="activeChatUser">Selecciona una conversación</strong>
-              <div style="font-size: 12px; color: var(--text-dim);" id="activeChatChannel">Canal: -</div>
-            </div>
-            <div id="activeChatActions" style="display: none; gap: 8px;">
-              <button class="btn btn-secondary btn-sm" id="btnToggleEscalate" onclick="toggleConversationEscalation()">Marcar como Resuelto</button>
+              <strong id="activeChatUser" style="color:var(--text-main);">Selecciona una conversación</strong>
+              <div style="font-size:11px; color:var(--text-dim);" id="activeChatMeta">Canal: -</div>
             </div>
           </div>
-
-          <div class="chat-messages" id="chatMessages">
-            <div style="margin: auto; text-align: center; color: var(--text-dim);">
-              Selecciona una conversación del panel lateral para ver el historial y responder.
+          <div class="chat-messages" id="chatMessagesBody">
+            <div style="margin:auto; text-align:center; color:var(--text-dim);">
+              Selecciona una conversación de la lista para ver el historial completo.
             </div>
           </div>
-
           <div class="chat-input-bar">
-            <input type="text" id="manualReplyInput" class="form-control" placeholder="Escribe una respuesta como asesor humano...">
-            <button class="btn btn-primary" onclick="sendManualReply()">Enviar</button>
+            <input type="text" id="humanReplyInput" class="form-control" placeholder="Escribe una respuesta como asesor humano..." onkeydown="if(event.key==='Enter') sendHumanReply()">
+            <button class="btn btn-primary" onclick="sendHumanReply()">Enviar</button>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- 3. LEADS / CRM VIEW -->
+    <!-- ======================================================== -->
+    <!-- 5. VIEW LEADS (CRM)                                      -->
+    <!-- ======================================================== -->
     <section id="view-leads" class="view-section">
       <div class="section-header">
         <div>
-          <h1>CRM de Prospectos (Leads)</h1>
-          <p>Contactos calificados capturados automáticamente por el chatbot en todos los canales.</p>
+          <h1>CRM de Leads</h1>
+          <p>Prospectos calificados capturados automáticamente por el asistente.</p>
         </div>
-        <div style="display: flex; gap: 10px;">
-          <a href="/api/leads/export/csv" class="btn btn-primary btn-sm">📥 Exportar a CSV</a>
+        <div style="display:flex; gap:8px;">
+          <a href="/api/leads/export/csv" class="btn btn-primary btn-sm">📥 Exportar CSV</a>
           <button class="btn btn-secondary btn-sm" onclick="loadLeads()">↻ Refrescar</button>
         </div>
       </div>
 
-      <div class="panel-card" style="padding: 16px;">
-        <div style="display: flex; gap: 12px; margin-bottom: 16px;">
-          <input type="text" id="leadsSearchInput" class="form-control" placeholder="Buscar por nombre, teléfono, correo o interés..." style="max-width: 400px;" oninput="filterLeads()">
-          <select id="leadsStatusFilter" class="form-control" style="max-width: 180px;" onchange="filterLeads()">
+      <div class="panel-card" style="padding:16px;">
+        <div style="display:flex; gap:10px; margin-bottom:14px;">
+          <input type="text" id="searchLeadsInput" class="form-control" placeholder="Buscar por nombre, teléfono o interés..." style="max-width:360px;" oninput="loadLeads()">
+          <select id="filterLeadStatus" class="form-control" style="max-width:160px;" onchange="loadLeads()">
             <option value="">Todos los estados</option>
             <option value="nuevo">Nuevo</option>
             <option value="calificado">Calificado</option>
@@ -211,216 +604,196 @@
             <thead>
               <tr>
                 <th>Nombre</th>
-                <th>Teléfono / WhatsApp</th>
+                <th>Teléfono</th>
                 <th>Email</th>
-                <th>Interés / Consulta</th>
-                <th>Canal</th>
+                <th>Interés</th>
                 <th>Estado</th>
                 <th>Fecha</th>
-                <th>Acciones</th>
               </tr>
             </thead>
             <tbody id="leadsTableBody">
-              <tr><td colspan="8" style="text-align: center; color: var(--text-dim);">Cargando prospectos...</td></tr>
+              <tr><td colspan="6" style="text-align:center; color:var(--text-dim);">Cargando prospectos...</td></tr>
             </tbody>
           </table>
         </div>
       </div>
     </section>
 
-    <!-- 4. KNOWLEDGE BASE (KB) VIEW -->
+    <!-- ======================================================== -->
+    <!-- 6. VIEW TICKETS (Handoff & Support)                      -->
+    <!-- ======================================================== -->
+    <section id="view-tickets" class="view-section">
+      <div class="section-header">
+        <div>
+          <h1>Tickets de Asesor Humano</h1>
+          <p>Conversaciones escaladas donde el cliente solicitó atención de una persona.</p>
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="loadTickets()">↻ Refrescar</button>
+      </div>
+
+      <div class="panel-card">
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Usuario</th>
+                <th>Canal</th>
+                <th>Motivo de Escalación</th>
+                <th>Estado</th>
+                <th>Acción</th>
+              </tr>
+            </thead>
+            <tbody id="ticketsTableBody">
+              <tr><td colspan="6" style="text-align:center; color:var(--text-dim); padding:24px;">No hay tickets pendientes de atención humana</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================================================== -->
+    <!-- 7. VIEW COBROS & LINK DE PAGO                            -->
+    <!-- ======================================================== -->
+    <section id="view-cobros" class="view-section">
+      <div class="section-header">
+        <div>
+          <h1>Cobros y Enlaces de Pago</h1>
+          <p>Genera links de pago por Stripe o Mercado Pago para cerrar ventas en el chat.</p>
+        </div>
+      </div>
+
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
+        <div class="panel-card">
+          <h3 class="panel-title">💳 Generador Rápido de Enlace de Pago</h3>
+          <div class="form-group">
+            <label>Concepto / Servicio:</label>
+            <input type="text" id="quickPayConcept" class="form-control" placeholder="ej. Anticipo Consulta Dental">
+          </div>
+          <div class="form-group">
+            <label>Monto ($):</label>
+            <input type="number" id="quickPayAmount" class="form-control" placeholder="50">
+          </div>
+          <div class="form-group">
+            <label>Moneda:</label>
+            <select id="quickPayCurrency" class="form-control">
+              <option value="USD">USD ($)</option>
+              <option value="MXN">MXN ($)</option>
+              <option value="EUR">EUR (€)</option>
+            </select>
+          </div>
+          <button class="btn btn-primary" onclick="generatePaymentLink()">Generar Link</button>
+          <div id="paymentLinkResult" style="margin-top:12px; font-family:var(--font-mono); font-size:12px; color:var(--accent-gold);"></div>
+        </div>
+
+        <div class="panel-card">
+          <h3 class="panel-title">⚙️ Cuentas de Cobro Conectadas</h3>
+          <div class="form-group">
+            <label>Stripe Publishable Key / Secret:</label>
+            <input type="password" id="cfgStripeKey" class="form-control" placeholder="sk_live_...">
+          </div>
+          <div class="form-group">
+            <label>Mercado Pago Access Token:</label>
+            <input type="password" id="cfgMpToken" class="form-control" placeholder="APP_USR-...">
+          </div>
+          <button class="btn btn-secondary btn-sm" onclick="savePaymentKeys()">Guardar Pasarelas</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================================================== -->
+    <!-- 8. VIEW KNOWLEDGE BASE (KB)                              -->
+    <!-- ======================================================== -->
     <section id="view-kb" class="view-section">
       <div class="section-header">
         <div>
           <h1>Base de Conocimiento (RAG)</h1>
-          <p>Documentos markdown y catálogos de los que el bot aprende para no inventar información.</p>
+          <p>Documentos Markdown de los que el asistente extrae respuestas precisas.</p>
         </div>
         <button class="btn btn-primary btn-sm" onclick="createNewKbFile()">+ Nuevo Documento</button>
       </div>
 
-      <div style="display: grid; grid-template-columns: 280px 1fr; gap: 20px;">
-        <!-- File list -->
-        <div class="panel-card" style="padding: 14px;">
-          <h4 style="margin-bottom: 12px; font-size: 13px; color: var(--text-muted); text-transform: uppercase;">Archivos en /member/kb</h4>
-          <div id="kbFilesList" style="display: flex; flex-direction: column; gap: 4px;">
-            <div style="color: var(--text-dim); font-size: 13px;">Cargando...</div>
+      <div style="display:grid; grid-template-columns: 260px 1fr; gap:20px;">
+        <div class="panel-card" style="padding:14px;">
+          <h4 style="font-size:11px; text-transform:uppercase; color:var(--text-dim); margin-bottom:10px;">Documentos</h4>
+          <div id="kbFilesList" style="display:flex; flex-direction:column; gap:4px;">
+            <div style="color:var(--text-dim); font-size:12px;">Cargando...</div>
           </div>
         </div>
 
-        <!-- File Editor -->
         <div class="panel-card">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
-            <input type="text" id="kbCurrentFilename" class="form-control" placeholder="nombre-archivo.md" style="max-width: 260px;">
-            <div style="display: flex; gap: 8px;">
-              <button class="btn btn-secondary btn-sm" style="color: var(--accent-red);" onclick="deleteCurrentKbFile()">Eliminar</button>
-              <button class="btn btn-primary btn-sm" onclick="saveCurrentKbFile()">Guardar Cambios</button>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <strong id="kbCurrentFileName" style="color:var(--text-main); font-family:var(--font-mono); font-size:13px;">Selecciona un archivo...</strong>
+            <div style="display:flex; gap:8px;">
+              <button class="btn btn-secondary btn-sm" style="color:var(--accent-red);" onclick="deleteKbDocument()">Eliminar</button>
+              <button class="btn btn-primary btn-sm" onclick="saveKbDocument()">Guardar Cambios</button>
             </div>
           </div>
-          <textarea id="kbEditorContent" class="form-control" style="height: 380px; font-family: var(--font-mono); font-size: 13px;" placeholder="Escribe aquí en formato Markdown..."></textarea>
-          
-          <div style="margin-top: 18px; border-top: 1px solid var(--border-color); padding-top: 14px;">
-            <label style="font-size: 12px; color: var(--text-muted); font-weight: 600;">🔍 Probador de Búsqueda RAG:</label>
-            <div style="display: flex; gap: 8px; margin-top: 6px;">
-              <input type="text" id="kbSearchTestInput" class="form-control" placeholder="Escribe una pregunta de cliente para probar qué fragmento encuentra...">
-              <button class="btn btn-secondary btn-sm" onclick="testKbSearch()">Buscar</button>
-            </div>
-            <div id="kbSearchResults" style="margin-top: 10px; font-size: 12px; color: var(--accent-gold); font-family: var(--font-mono);"></div>
-          </div>
+          <textarea id="kbEditor" class="form-control" style="height:360px; font-family:var(--font-mono); font-size:12px;" placeholder="Escribe aquí el contenido en Markdown..."></textarea>
         </div>
       </div>
     </section>
 
-    <!-- 5. CHANNELS & CONNECTIONS VIEW -->
-    <section id="view-channels" class="view-section">
-      <div class="section-header">
-        <div>
-          <h1>Centro de Conexiones</h1>
-          <p>Conecta tu chatbot a WhatsApp, Telegram, Instagram y a tu sitio web.</p>
-        </div>
-      </div>
-
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px;">
-        <!-- WhatsApp -->
-        <div class="panel-card">
-          <h3 class="panel-title">💬 WhatsApp (Meta Cloud API / Twilio)</h3>
-          <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 14px;">
-            Conecta tu número oficial a través de la Cloud API directa de Meta o mediante Twilio.
-          </p>
-          <div class="form-group">
-            <label>URL del Webhook:</label>
-            <input type="text" class="form-control" id="waWebhookUrl" readonly style="color: var(--accent-gold); font-family: var(--font-mono);">
-          </div>
-          <div class="form-group">
-            <label>Verify Token de Meta:</label>
-            <input type="text" class="form-control" id="waVerifyToken">
-          </div>
-          <div class="form-group">
-            <label>Phone Number ID (Meta):</label>
-            <input type="text" class="form-control" id="waPhoneId" placeholder="ej. 1098237498123">
-          </div>
-          <div class="form-group">
-            <label>Access Token Permanente (Meta):</label>
-            <input type="password" class="form-control" id="waAccessToken" placeholder="EAAB...">
-          </div>
-          <button class="btn btn-primary btn-sm" onclick="saveWhatsAppChannel()">Guardar Conexión</button>
-        </div>
-
-        <!-- Telegram -->
-        <div class="panel-card">
-          <h3 class="panel-title">✈️ Telegram (BotFather)</h3>
-          <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 14px;">
-            El canal más rápido de conectar. Crea tu bot con @BotFather en Telegram y pega el token.
-          </p>
-          <div class="form-group">
-            <label>Telegram Bot Token:</label>
-            <input type="text" class="form-control" id="tgBotToken" placeholder="123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ">
-          </div>
-          <div class="form-group">
-            <label>Modo de Conexión:</label>
-            <select id="tgMode" class="form-control">
-              <option value="polling">Polling (Ideal para pruebas y local sin túneles)</option>
-              <option value="webhook">Webhook (Producción en la nube)</option>
-            </select>
-          </div>
-          <button class="btn btn-primary btn-sm" onclick="saveTelegramChannel()">Guardar Conexión</button>
-        </div>
-
-        <!-- Web Widget Snippet -->
-        <div class="panel-card">
-          <h3 class="panel-title">🌐 Widget para tu Sitio Web</h3>
-          <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 14px;">
-            Pega este código HTML antes de cerrar la etiqueta <code>&lt;/body&gt;</code> de tu página web:
-          </p>
-          <textarea id="widgetSnippet" class="form-control" style="height: 110px; font-family: var(--font-mono); font-size: 12px;" readonly></textarea>
-          <button class="btn btn-secondary btn-sm" style="margin-top: 10px;" onclick="copyWidgetSnippet()">📋 Copiar Código</button>
-        </div>
-      </div>
-    </section>
-
-    <!-- 6. SIMULATOR / PLAYGROUND VIEW -->
+    <!-- ======================================================== -->
+    <!-- 9. VIEW SIMULATOR                                        -->
+    <!-- ======================================================== -->
     <section id="view-simulator" class="view-section">
       <div class="section-header">
         <div>
-          <h1>Simulador de Chat en Vivo</h1>
-          <p>Prueba las respuestas del bot, la activación de herramientas y la extracción de datos en tiempo real.</p>
+          <h1>Simulador en Vivo</h1>
+          <p>Prueba cómo responde tu bot, qué herramientas dispara y cómo razona la IA.</p>
         </div>
         <button class="btn btn-secondary btn-sm" onclick="clearSimulatorChat()">Limpiar Chat</button>
       </div>
 
-      <div style="display: grid; grid-template-columns: 1fr 340px; gap: 20px; height: calc(100vh - 180px);">
-        <!-- Simulator Chat Box -->
+      <div style="display:grid; grid-template-columns: 1fr 300px; gap:20px; height:calc(100vh - 170px);">
         <div class="chat-viewer">
           <div class="chat-messages" id="simMessages">
             <div class="msg-bubble msg-bot">
-              ¡Hola! Soy tu asistente en modo simulador. Escríbeme cualquier pregunta como si fueras un cliente para probar cómo respondo y cómo capturo prospectos.
+              ¡Hola! Soy tu asistente en modo simulador. Hazme cualquier consulta como si fueras un cliente para probar mis respuestas y captura de datos.
             </div>
           </div>
           <div class="chat-input-bar">
-            <input type="text" id="simInput" class="form-control" placeholder="Escribe un mensaje de prueba (ej. 'hola, ¿cuánto cuesta el corte de cabello y qué horario tienen?')..." onkeydown="if(event.key==='Enter') sendSimMessage()">
+            <input type="text" id="simInput" class="form-control" placeholder="Escribe un mensaje de prueba..." onkeydown="if(event.key==='Enter') sendSimMessage()">
             <button class="btn btn-primary" onclick="sendSimMessage()">Enviar</button>
           </div>
         </div>
 
-        <!-- Simulator Debug & Tool Inspector -->
-        <div class="panel-card" style="display: flex; flex-direction: column; overflow-y: auto;">
-          <h4 style="font-size: 14px; margin-bottom: 12px; color: var(--accent-gold);">⚡ Inspector de Ejecución</h4>
-          <div style="font-size: 12px; margin-bottom: 8px;">Proveedor de IA: <b id="simProviderTag" style="color: var(--text-main);">-</b></div>
-          <div style="font-size: 12px; margin-bottom: 8px;">Modelo: <b id="simModelTag" style="color: var(--text-main);">-</b></div>
-          <div style="font-size: 12px; margin-bottom: 8px;">Tokens: <b id="simTokensTag" style="color: var(--text-main);">-</b></div>
-          <div style="border-top: 1px solid var(--border-color); margin-top: 8px; padding-top: 8px;">
-            <label style="font-size: 11px; text-transform: uppercase; color: var(--text-dim);">Herramientas Disparadas:</label>
-            <pre id="simToolInspector" style="margin-top: 6px; background: #000; padding: 10px; border-radius: 8px; font-size: 11px; color: var(--accent-green); overflow-x: auto; max-height: 220px;">[Ninguna todavía]</pre>
+        <div class="panel-card" style="overflow-y:auto;">
+          <h4 style="font-size:13px; margin-bottom:12px; color:var(--primary);">⚡ Inspector de Ejecución</h4>
+          <div style="font-size:11px; margin-bottom:6px;">Proveedor: <b id="simProviderTag" style="color:var(--text-main);">-</b></div>
+          <div style="font-size:11px; margin-bottom:6px;">Modelo: <b id="simModelTag" style="color:var(--text-main);">-</b></div>
+          <div style="font-size:11px; margin-bottom:8px;">Tokens: <b id="simTokensTag" style="color:var(--text-main);">-</b></div>
+          <div style="border-top:1px solid var(--border-color); padding-top:8px;">
+            <label style="font-size:10px; text-transform:uppercase; color:var(--text-dim);">Herramientas Disparadas:</label>
+            <pre id="simToolInspector" style="margin-top:6px; background:#000; padding:8px; border-radius:6px; font-size:10px; color:var(--accent-green); overflow-x:auto; max-height:200px;">[Ninguna todavía]</pre>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- 7. SETTINGS VIEW -->
+    <!-- ======================================================== -->
+    <!-- 10. VIEW SETTINGS (IA & API Keys)                        -->
+    <!-- ======================================================== -->
     <section id="view-settings" class="view-section">
       <div class="section-header">
         <div>
-          <h1>Configuración del Bot y Negocio</h1>
-          <p>Personaliza el cerebro de IA, el tono, las reglas y los datos de tu empresa.</p>
+          <h1>Ajustes del Bot y Configuración de IA</h1>
+          <p>Configura tu proveedor de IA, tu API Key, y la información del negocio.</p>
         </div>
         <button class="btn btn-primary" onclick="saveAllSettings()">Guardar Toda la Configuración</button>
       </div>
 
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
-        <!-- Bot Settings -->
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
         <div class="panel-card">
-          <h3 class="panel-title">🤖 Personalidad y Cerebro de IA</h3>
-          <div class="form-group">
-            <label>Nombre del Asistente:</label>
-            <input type="text" id="cfgBotName" class="form-control">
-          </div>
-          <div class="form-group">
-            <label>Giro del Negocio:</label>
-            <select id="cfgBotNiche" class="form-control">
-              <option value="starter">Starter (Genérico)</option>
-              <option value="barberia">Barbería</option>
-              <option value="restaurante">Restaurante</option>
-              <option value="cafeteria">Cafetería</option>
-              <option value="panaderia">Panadería</option>
-              <option value="salon">Salón de Belleza</option>
-              <option value="spa">Spa</option>
-              <option value="dentista">Dentista</option>
-              <option value="clinica">Clínica Médica</option>
-              <option value="gimnasio">Gimnasio</option>
-              <option value="coach">Coach / Consultor</option>
-              <option value="inmobiliaria">Inmobiliaria</option>
-              <option value="tienda">Tienda / E-commerce</option>
-              <option value="crm">CRM / Ventas B2B</option>
-              <option value="hoteleria">Hotelería</option>
-            </select>
-          </div>
+          <h3 class="panel-title">🤖 Inteligencia Artificial & API Keys</h3>
           <div class="form-group">
             <label>Proveedor de IA:</label>
             <select id="cfgLlmProvider" class="form-control">
               <option value="gemini">Google Gemini 3.5 Flash Lite (Recomendado · Ultrarrápido y Económico)</option>
               <option value="anthropic">Anthropic Claude (Claude Sonnet 5 / Opus 5)</option>
-              <option value="openai">OpenAI (GPT-5.6 Luna / Terra / Sol)</option>
+              <option value="openai">OpenAI (GPT-5.6 Luna / Terra)</option>
               <option value="grok">xAI Grok (Grok 4.6)</option>
-              <option value="ollama">Ollama / DeepSeek-V4 Local</option>
               <option value="mock">Simulador Offline (Sin API Key)</option>
             </select>
           </div>
@@ -430,23 +803,26 @@
           </div>
           <div class="form-group">
             <label>API Key del Proveedor:</label>
-            <input type="password" id="cfgLlmApiKey" class="form-control" placeholder="Pega tu API Key de Gemini, Claude, OpenAI o Grok...">
+            <input type="password" id="cfgLlmApiKey" class="form-control" placeholder="Pega tu clave de Gemini, Claude, OpenAI o Grok...">
             <div style="display:flex; gap:8px; margin-top:6px;">
               <button class="btn btn-secondary btn-sm" onclick="testApiConnection()" id="btnTestConnection">🔌 Probar Conexión</button>
-              <span id="apiKeyTestResult" style="font-size:12px; line-height:32px;"></span>
+              <span id="apiKeyTestResult" style="font-size:12px; line-height:30px;"></span>
             </div>
           </div>
           <div class="form-group">
-            <label>Tono de Comunicación:</label>
-            <input type="text" id="cfgBotPersonality" class="form-control" placeholder="ej. cercano, servicial, profesional y conciso">
+            <label>Nombre del Asistente:</label>
+            <input type="text" id="cfgBotName" class="form-control">
           </div>
           <div class="form-group">
-            <label>Instrucciones de Sistema Adicionales:</label>
-            <textarea id="cfgSystemPromptBonus" class="form-control" placeholder="Instrucciones especiales para el asistente..."></textarea>
+            <label>Giro del Negocio:</label>
+            <input type="text" id="cfgBotNiche" class="form-control">
+          </div>
+          <div class="form-group">
+            <label>Personalidad / Tono:</label>
+            <input type="text" id="cfgBotPersonality" class="form-control">
           </div>
         </div>
 
-        <!-- Business Profile -->
         <div class="panel-card">
           <h3 class="panel-title">🏢 Perfil del Negocio</h3>
           <div class="form-group">
@@ -462,7 +838,7 @@
             <input type="text" id="cfgBizHours" class="form-control">
           </div>
           <div class="form-group">
-            <label>Ubicación / Dirección:</label>
+            <label>Ubicación / Modalidad:</label>
             <input type="text" id="cfgBizLocation" class="form-control">
           </div>
           <div class="form-group">
@@ -472,10 +848,6 @@
           <div class="form-group">
             <label>Correo Electrónico:</label>
             <input type="text" id="cfgBizEmail" class="form-control">
-          </div>
-          <div class="form-group">
-            <label>Métodos de Pago Aceptados:</label>
-            <input type="text" id="cfgBizPayments" class="form-control">
           </div>
         </div>
       </div>

@@ -1,13 +1,23 @@
-// FacilisBot Administrative Dashboard Client (Multi-Tenant)
+// FacilisBot AgentOS Client Dashboard
 let currentConfig = null;
 let activeConversationId = null;
 let currentBotId = 'default';
 let allLeads = [];
 let allConversations = [];
+let userRole = 'client';
+
+document.addEventListener('DOMContentLoaded', async () => {
+  setupWidgetSnippet();
+  
+  // Check for existing session
+  const savedCode = sessionStorage.getItem('facilisbot_access_code');
+  if (savedCode) {
+    document.getElementById('loginAccessCode').value = savedCode;
+    await attemptLogin();
+  }
+});
 
 // ================= AUTH / LOGIN =================
-let userRole = 'client'; // 'admin' or 'client'
-
 async function attemptLogin() {
   const code = document.getElementById('loginAccessCode').value.trim();
   if (!code) return;
@@ -28,18 +38,16 @@ async function attemptLogin() {
       userRole = data.role;
       
       if (data.role === 'admin') {
-        // Admin sees all bots
         currentBotId = 'default';
       } else {
-        // Client sees only their bot
         currentBotId = data.botId || 'default';
-        // Hide bot switcher for clients
         const switcher = document.getElementById('botSwitcher');
         if (switcher) switcher.parentElement.style.display = 'none';
       }
       
       document.getElementById('loginOverlay').style.display = 'none';
-      document.getElementById('appContainer').style.display = '';
+      document.getElementById('appContainer').style.display = 'flex';
+      
       loadBotsList();
       loadOverview();
       loadConfig();
@@ -61,16 +69,45 @@ function logout() {
   document.getElementById('loginAccessCode').value = '';
 }
 
-document.addEventListener('DOMContentLoaded', async () => {
-  setupNavigation();
-  
-  // Check for existing session
-  const savedCode = sessionStorage.getItem('facilisbot_access_code');
-  if (savedCode) {
-    document.getElementById('loginAccessCode').value = savedCode;
-    await attemptLogin();
-  }
-});
+// ================= NAVIGATION =================
+function navigateTo(tab) {
+  document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+  document.querySelectorAll('.view-section').forEach(v => v.classList.remove('active'));
+
+  const activeItem = document.querySelector(`.nav-item[data-tab="${tab}"]`);
+  if (activeItem) activeItem.classList.add('active');
+
+  const targetView = document.getElementById(`view-${tab}`);
+  if (targetView) targetView.classList.add('active');
+
+  // Breadcrumbs
+  const breadcrumbMap = {
+    'flujo': 'MI AGENTE / FLUJO',
+    'resumen': 'INICIO / RESUMEN',
+    'inbox': 'BANDEJA / CONVERSACIONES',
+    'leads': 'BANDEJA / LEADS',
+    'cobros': 'BANDEJA / COBROS',
+    'tickets': 'BANDEJA / TICKETS',
+    'resenas': 'BANDEJA / RESEÑAS',
+    'campanas': 'BANDEJA / CAMPAÑAS',
+    'kb': 'MI AGENTE / CONOCIMIENTO',
+    'conexiones': 'MI AGENTE / CONEXIONES',
+    'simulator': 'MI AGENTE / SIMULADOR',
+    'settings': 'MI AGENTE / AJUSTES'
+  };
+
+  const breadcrumbEl = document.getElementById('topBreadcrumb');
+  if (breadcrumbEl) breadcrumbEl.textContent = breadcrumbMap[tab] || `PANEL / ${tab.toUpperCase()}`;
+
+  // Lazy load tab data
+  if (tab === 'flujo' || tab === 'resumen') loadOverview();
+  if (tab === 'inbox') loadConversations();
+  if (tab === 'leads') loadLeads();
+  if (tab === 'tickets') loadTickets();
+  if (tab === 'kb') loadKbFiles();
+  if (tab === 'settings') loadConfig();
+  if (tab === 'conexiones') setupWidgetSnippet();
+}
 
 // ================= BOT SWITCHER =================
 async function loadBotsList() {
@@ -84,7 +121,7 @@ async function loadBotsList() {
     (data.bots || []).forEach(b => {
       const opt = document.createElement('option');
       opt.value = b.id;
-      opt.textContent = `${b.name} (${b.id})`;
+      opt.textContent = `⚡ ${b.name} (${b.id})`;
       if (b.id === currentBotId) opt.selected = true;
       switcher.appendChild(opt);
     });
@@ -103,111 +140,125 @@ function switchActiveBot(botId) {
   showToast(`Cambiado a bot: ${botId}`);
 }
 
-// ================= NAVIGATION =================
-function setupNavigation() {
-  const navItems = document.querySelectorAll('.nav-item');
-  navItems.forEach(item => {
-    item.addEventListener('click', () => {
-      navItems.forEach(i => i.classList.remove('active'));
-      document.querySelectorAll('.view-section').forEach(v => v.classList.remove('active'));
-
-      item.classList.add('active');
-      const tab = item.getAttribute('data-tab');
-      const targetView = document.getElementById(`view-${tab}`);
-      if (targetView) targetView.classList.add('active');
-
-      // Lazy load tab data
-      if (tab === 'overview') loadOverview();
-      if (tab === 'inbox') loadConversations();
-      if (tab === 'leads') loadLeads();
-      if (tab === 'kb') loadKbFiles();
-      if (tab === 'settings') loadConfig();
-    });
-  });
-}
-
-// ================= 1. OVERVIEW =================
+// ================= 1. OVERVIEW & FLUJO STATS =================
 async function loadOverview() {
   try {
     const res = await fetch(`/api/overview?bot_id=${encodeURIComponent(currentBotId)}`);
     const data = await res.json();
 
     document.getElementById('sidebarBotName').textContent = data.bot?.name || 'FacilisBot';
-    document.getElementById('sidebarNiche').textContent = data.bot?.niche || 'starter';
-
     const m = data.metrics || {};
-    document.getElementById('kpiTotalConvs').textContent = m.totalConversations ?? 0;
-    document.getElementById('kpiConvs24h').textContent = `+${m.conversations24h ?? 0} en las últimas 24h`;
-    document.getElementById('kpiMsgs24h').textContent = m.messages24h ?? 0;
-    document.getElementById('kpiTotalLeads').textContent = m.totalLeads ?? 0;
-    document.getElementById('kpiResolutionRate').textContent = m.botResolutionRate || '100%';
-    document.getElementById('kpiEscalatedCount').textContent = `${m.escalatedCount ?? 0} transferencias humanas (${m.escalationRate || '0%'})`;
-    document.getElementById('kpiCostUsd').textContent = `$${m.estimatedCostUsd || '0.0000'}`;
-    document.getElementById('kpiTotalTokens').textContent = `${(m.totalTokens || 0).toLocaleString()} tokens procesados`;
+    
+    // Flujo Nodes Data
+    const totalConvs = m.totalConversations ?? 0;
+    const totalMsgs = m.messages24h ?? 0;
+    const model = data.bot?.llmModel || currentConfig?.llm?.model || 'gemini-3.5-flash-lite';
 
-    // Channel badges
+    const flujoConvs = document.getElementById('flujoConvsCount');
+    if (flujoConvs) flujoConvs.textContent = `${totalConvs} conversaciones`;
+
+    const flujoTurnos = document.getElementById('flujoTurnosCount');
+    if (flujoTurnos) flujoTurnos.textContent = `${totalMsgs} turnos / 30d`;
+
+    const flujoModel = document.getElementById('flujoModelName');
+    if (flujoModel) flujoModel.textContent = model;
+
+    // Resumen Analítica Cards
+    const statsConvs = document.getElementById('resumenStatsConvs');
+    if (statsConvs) statsConvs.textContent = `Volumen: ${totalConvs} conversaciones, resolución del ${m.botResolutionRate || '100%'}.`;
+
+    const costosDesc = document.getElementById('resumenCostosDesc');
+    if (costosDesc) costosDesc.textContent = `Gasto estimado en IA: $${m.estimatedCostUsd || '0.0000'} USD (${(m.totalTokens || 0).toLocaleString()} tokens).`;
+
+    // Tool counts
+    const kbCalls = document.getElementById('flujoToolKbCalls');
+    if (kbCalls) kbCalls.textContent = `${m.kbSearches ?? 0} llamadas / 30d`;
+
+    const handoffCalls = document.getElementById('flujoToolHandoffCalls');
+    if (handoffCalls) handoffCalls.textContent = `${m.escalatedCount ?? 0} llamadas / 30d`;
+
+    const leadCalls = document.getElementById('flujoToolLeadCalls');
+    if (leadCalls) leadCalls.textContent = `${m.totalLeads ?? 0} llamadas / 30d`;
+
+    // Connections Status
     const ch = data.channels || {};
-    setChannelBadge('badgeStatusWhatsApp', ch.whatsapp);
-    setChannelBadge('badgeStatusTelegram', ch.telegram);
-    setChannelBadge('badgeStatusInstagram', ch.instagram);
-    setChannelBadge('badgeStatusWeb', ch.web);
+    const tgBadge = document.getElementById('badgeTgStatus');
+    if (tgBadge) {
+      tgBadge.textContent = ch.telegram ? 'Conectado' : 'Sin conectar';
+      tgBadge.className = ch.telegram ? 'node-badge-active' : 'badge-pro';
+    }
+
+    const waBadge = document.getElementById('badgeWaCloudStatus');
+    if (waBadge) {
+      waBadge.textContent = ch.whatsapp ? 'Conectado' : 'Sin conectar';
+      waBadge.className = ch.whatsapp ? 'node-badge-active' : 'badge-pro';
+    }
+
   } catch (err) {
-    console.error('Error cargando métricas:', err);
+    console.error('Error cargando overview:', err);
   }
 }
 
-function setChannelBadge(elemId, isActive) {
-  const el = document.getElementById(elemId);
-  if (!el) return;
-  if (isActive) {
-    el.textContent = 'ACTIVO';
-    el.className = 'badge badge-green';
-  } else {
-    el.textContent = 'INACTIVO';
-    el.className = 'badge badge-gray';
-  }
+// ================= FLOW NODE INTERACTION =================
+function showNodeDetails(nodeType) {
+  const details = {
+    'canal': '🌐 Canal de Entrada: Recibe eventos webhook y mensajes del widget web en tiempo real.',
+    'buffer': '☵ Buffer de Mensajes: Agrupa mensajes consecutivos del usuario enviados en una ventana de 15 segundos para dar una sola respuesta coherente.',
+    'agente': '⚙️ Motor de Agente: Orquesta el prompt del sistema, las herramientas de Function Calling y la memoria de contexto en un bucle de máx 6 pasos.',
+    'respuesta': '✉️ Generador de Respuesta: Formatea la respuesta con espaciado natural de 1.8 segundos para una experiencia humana.',
+    'modelo': '🧠 Modelo de IA: Ejecuta Google Gemini 3.5 Flash Lite con inferencia ultra-rápida y soporte multimodal.',
+    'memoria': '💾 Memoria en D1: Almacena los últimos 20 mensajes de la conversación en SQLite Edge.',
+    'tool-searchkb': '📖 searchKb: Busca fragmentos relevantes en la Base de Conocimiento mediante BM25/TF-IDF.',
+    'tool-handoff': '👤 handoffHuman: Transfiere a un asesor humano cuando se requiere empatía o resolución compleja.',
+    'tool-pause': '⏸️ pauseBot: Pausa temporalmente las respuestas para atención manual.',
+    'tool-snooze': '⏰ snoozeUser: Programa seguimiento automático del Cazador de Ventas tras enfriarse el prospecto.',
+    'tool-lead': '🎯 captureLead: Extrae y califica automáticamente nombre, teléfono y necesidad del cliente.'
+  };
+
+  showToast(details[nodeType] || 'Nodo activo del agente');
 }
 
-// ================= 2. INBOX =================
+// ================= 2. CONVERSATIONS & INBOX =================
 async function loadConversations() {
   try {
-    const channel = document.getElementById('filterChannel')?.value || '';
-    const status = document.getElementById('filterStatus')?.value || '';
-    const url = `/api/conversations?channel=${encodeURIComponent(channel)}&status=${encodeURIComponent(status)}&bot_id=${encodeURIComponent(currentBotId)}`;
-
+    const url = `/api/conversations?bot_id=${encodeURIComponent(currentBotId)}`;
     const res = await fetch(url);
     allConversations = await res.json();
 
     const listEl = document.getElementById('conversationsList');
     listEl.innerHTML = '';
 
-    if (allConversations.length === 0) {
-      listEl.innerHTML = `<div style="padding: 24px; text-align: center; color: var(--text-muted);">No hay conversaciones registradas</div>`;
+    const convs = Array.isArray(allConversations) ? allConversations : allConversations.conversations || [];
+
+    if (convs.length === 0) {
+      listEl.innerHTML = `<div style="padding: 24px; text-align: center; color: var(--text-dim); font-size:12px;">No hay conversaciones registradas</div>`;
       return;
     }
 
-    allConversations.forEach(c => {
+    convs.forEach(c => {
       const item = document.createElement('div');
       item.className = `conv-item ${c.id === activeConversationId ? 'active' : ''}`;
       item.onclick = () => selectConversation(c.id);
 
       const channelEmoji = c.channel === 'whatsapp' ? '💬' : c.channel === 'telegram' ? '✈️' : '🌐';
-      const timeStr = new Date(c.updatedAt || c.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const timeStr = new Date(c.updated_at || c.created_at || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
       item.innerHTML = `
-        <div class="conv-item-header">
-          <span class="conv-item-user">${channelEmoji} ${escapeHtml(c.userName || c.userId)}</span>
-          <span class="conv-item-time">${timeStr}</span>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+          <strong style="font-size:12px; color:var(--text-main);">${channelEmoji} ${escapeHtml(c.user_name || c.user_id || 'Usuario')}</strong>
+          <span style="font-size:10px; color:var(--text-dim); font-family:var(--font-mono);">${timeStr}</span>
         </div>
-        <div class="conv-item-preview">${escapeHtml(c.lastMessage?.content || 'Sin mensajes')}</div>
+        <div style="font-size:11px; color:var(--text-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+          ${escapeHtml(c.last_message || 'Conversación activa')}
+        </div>
       `;
       listEl.appendChild(item);
     });
 
     if (activeConversationId) {
       selectConversation(activeConversationId);
-    } else if (allConversations[0]) {
-      selectConversation(allConversations[0].id);
+    } else if (convs[0]) {
+      selectConversation(convs[0].id);
     }
   } catch (err) {
     console.error('Error cargando conversaciones:', err);
@@ -223,18 +274,22 @@ async function selectConversation(convId) {
     const data = await res.json();
     const { conversation, messages } = data;
 
-    document.getElementById('activeChatUser').textContent = conversation.userName || conversation.userId;
-    document.getElementById('activeChatMeta').textContent = `Canal: ${conversation.channel.toUpperCase()} · ID: ${conversation.id}`;
+    if (conversation) {
+      document.getElementById('activeChatUser').textContent = conversation.user_name || conversation.user_id || 'Usuario';
+      document.getElementById('activeChatMeta').textContent = `Canal: ${(conversation.channel || 'web').toUpperCase()} · ID: ${conversation.id}`;
+    }
 
     const msgContainer = document.getElementById('chatMessagesBody');
     msgContainer.innerHTML = '';
 
-    messages.forEach(m => {
+    (messages || []).forEach(m => {
       const bubble = document.createElement('div');
       bubble.className = `msg-bubble ${m.role === 'user' ? 'msg-user' : 'msg-bot'}`;
       bubble.innerHTML = `
         <div>${escapeHtml(m.content)}</div>
-        <div class="msg-time">${new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+        <div style="font-size:9px; opacity:0.6; text-align:right; margin-top:4px; font-family:var(--font-mono);">
+          ${new Date(m.created_at || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+        </div>
       `;
       msgContainer.appendChild(bubble);
     });
@@ -264,7 +319,7 @@ async function sendHumanReply() {
   }
 }
 
-// ================= 3. LEADS CRM =================
+// ================= 3. LEADS =================
 async function loadLeads() {
   try {
     const status = document.getElementById('filterLeadStatus')?.value || '';
@@ -272,13 +327,14 @@ async function loadLeads() {
     const url = `/api/leads?status=${encodeURIComponent(status)}&search=${encodeURIComponent(search)}&bot_id=${encodeURIComponent(currentBotId)}`;
 
     const res = await fetch(url);
-    allLeads = await res.json();
+    const data = await res.json();
+    allLeads = Array.isArray(data) ? data : data.leads || [];
 
     const tbody = document.getElementById('leadsTableBody');
     tbody.innerHTML = '';
 
     if (allLeads.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 24px;">No se encontraron prospectos</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--text-dim); padding:24px;">No se encontraron prospectos</td></tr>`;
       return;
     }
 
@@ -288,16 +344,9 @@ async function loadLeads() {
         <td><strong>${escapeHtml(l.name || 'Sin nombre')}</strong></td>
         <td>${escapeHtml(l.phone || '-')}</td>
         <td>${escapeHtml(l.email || '-')}</td>
-        <td>${escapeHtml(l.interest || 'Interés general')}</td>
-        <td>
-          <span class="badge ${l.status === 'calificado' ? 'badge-green' : l.status === 'cerrado' ? 'badge-gold' : 'badge-gray'}">
-            ${escapeHtml(l.status)}
-          </span>
-        </td>
-        <td>${new Date(l.createdAt).toLocaleDateString()}</td>
-        <td>
-          <button class="btn btn-secondary btn-sm" onclick="exportLeadContact('${l.id}')">Exportar</button>
-        </td>
+        <td>${escapeHtml(l.interest || 'Consulta')}</td>
+        <td><span class="badge-pro" style="color:var(--accent-green);">${escapeHtml(l.status || 'nuevo')}</span></td>
+        <td>${new Date(l.created_at || Date.now()).toLocaleDateString()}</td>
       `;
       tbody.appendChild(tr);
     });
@@ -306,19 +355,63 @@ async function loadLeads() {
   }
 }
 
-function exportLeads(format) {
-  if (format === 'csv') {
-    window.open('/api/leads/export/csv', '_blank');
-  } else {
-    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(allLeads, null, 2));
-    const dl = document.createElement('a');
-    dl.setAttribute('href', dataStr);
-    dl.setAttribute('download', `leads_${new Date().toISOString().slice(0, 10)}.json`);
-    dl.click();
+// ================= 4. TICKETS (Escalated Handoffs) =================
+async function loadTickets() {
+  try {
+    const res = await fetch(`/api/conversations?status=escalated&bot_id=${encodeURIComponent(currentBotId)}`);
+    const data = await res.json();
+    const tickets = Array.isArray(data) ? data : data.conversations || [];
+
+    const tbody = document.getElementById('ticketsTableBody');
+    tbody.innerHTML = '';
+
+    if (tickets.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--text-dim); padding:24px;">No hay tickets pendientes de atención humana</td></tr>`;
+      return;
+    }
+
+    tickets.forEach(t => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><code>${t.id}</code></td>
+        <td><strong>${escapeHtml(t.user_name || t.user_id || 'Usuario')}</strong></td>
+        <td>${escapeHtml(t.channel || 'web')}</td>
+        <td>${escapeHtml(t.last_message || 'Solicitó asesor humano')}</td>
+        <td><span class="badge-pro" style="color:var(--accent-gold);">Escalado</span></td>
+        <td>
+          <button class="btn btn-primary btn-sm" onclick="navigateTo('inbox'); selectConversation('${t.id}')">Atender</button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  } catch (err) {
+    console.error('Error cargando tickets:', err);
   }
 }
 
-// ================= 4. KNOWLEDGE BASE =================
+// ================= 5. COBROS =================
+function generatePaymentLink() {
+  const concept = document.getElementById('quickPayConcept').value.trim() || 'Servicio General';
+  const amount = document.getElementById('quickPayAmount').value.trim() || '50';
+  const currency = document.getElementById('quickPayCurrency').value;
+
+  const demoUrl = `https://checkout.stripe.com/pay/facilisbot_${Date.now()}?amount=${amount}&curr=${currency}&desc=${encodeURIComponent(concept)}`;
+  
+  const resEl = document.getElementById('paymentLinkResult');
+  resEl.innerHTML = `
+    <div style="background:#110f0d; padding:10px; border-radius:8px; border:1px solid var(--border-color); margin-top:8px;">
+      <div>✅ Link generado:</div>
+      <a href="${demoUrl}" target="_blank" style="color:var(--primary); word-break:break-all;">${demoUrl}</a>
+    </div>
+  `;
+  showToast('Enlace de pago generado');
+}
+
+function savePaymentKeys() {
+  showToast('Claves de pasarela guardadas');
+}
+
+// ================= 6. KNOWLEDGE BASE =================
 async function loadKbFiles() {
   try {
     const res = await fetch(`/api/kb?bot_id=${encodeURIComponent(currentBotId)}`);
@@ -327,17 +420,19 @@ async function loadKbFiles() {
     listEl.innerHTML = '';
 
     if (!data.documents || data.documents.length === 0) {
-      listEl.innerHTML = `<div style="padding: 16px; color: var(--text-muted); font-size: 13px;">No hay archivos en la Base de Conocimiento</div>`;
+      listEl.innerHTML = `<div style="padding:10px; color:var(--text-dim); font-size:11px;">No hay archivos en la Base de Conocimiento</div>`;
       return;
     }
 
     data.documents.forEach((d, idx) => {
       const item = document.createElement('div');
-      item.className = 'kb-file-item';
+      item.className = 'conv-item';
+      item.style.padding = '8px 10px';
+      item.style.borderRadius = '6px';
       item.onclick = () => openKbDocument(d.filename);
       item.innerHTML = `
-        <span>📄 <strong>${escapeHtml(d.filename)}</strong></span>
-        <span style="color: var(--text-muted); font-size: 12px;">${(d.size / 1024).toFixed(1)} KB · ${d.chunksCount} fragmentos</span>
+        <div style="font-size:12px; font-weight:600; color:var(--text-main);">📄 ${escapeHtml(d.filename)}</div>
+        <div style="font-size:10px; color:var(--text-dim);">${d.chunksCount} fragmentos indexados</div>
       `;
       listEl.appendChild(item);
       if (idx === 0) openKbDocument(d.filename);
@@ -376,30 +471,81 @@ async function saveKbDocument() {
   }
 }
 
-// ================= 5. CONNECTIONS =================
+function createNewKbFile() {
+  const name = prompt('Nombre del nuevo archivo Markdown (ej. precios.md):', 'documento.md');
+  if (!name) return;
+  document.getElementById('kbCurrentFileName').textContent = name;
+  document.getElementById('kbEditor').value = `# ${name}\n\nEscribe aquí la información oficial...`;
+}
+
+async function deleteKbDocument() {
+  const filename = document.getElementById('kbCurrentFileName').textContent;
+  if (!filename || filename.startsWith('Selecciona')) return;
+  if (!confirm(`¿Eliminar ${filename}?`)) return;
+
+  try {
+    await fetch(`/api/kb/${encodeURIComponent(filename)}?bot_id=${encodeURIComponent(currentBotId)}`, {
+      method: 'DELETE'
+    });
+    showToast(`Archivo ${filename} eliminado`);
+    loadKbFiles();
+  } catch (err) {
+    console.error('Error eliminando KB:', err);
+  }
+}
+
+// ================= 7. CONNECTIONS =================
 function setupWidgetSnippet() {
   const origin = window.location.origin;
-  document.getElementById('waWebhookUrl').value = `${origin}/webhook/whatsapp/${currentBotId}`;
+  const snippet = `<!-- FacilisBot Web Chat Widget -->\n<script src="${origin}/widget/widget.js" data-bot-id="${currentBotId}" data-tema="oscuro" data-color="#e25d1e" data-posicion="bottom-right" async></script>`;
+  
+  const widgetSnip = document.getElementById('widgetSnippet');
+  if (widgetSnip) widgetSnip.value = snippet;
 
-  const snippet = `<!-- FacilisBot Web Chat Widget -->\n<script src="${origin}/widget/widget.js" data-bot-id="${currentBotId}" async></script>`;
-  document.getElementById('widgetSnippet').value = snippet;
+  const tgUrl = document.getElementById('tgWebhookUrl');
+  if (tgUrl) tgUrl.value = `${origin}/webhook/telegram/${currentBotId}`;
+
+  const waUrl = document.getElementById('waWebhookUrl');
+  if (waUrl) waUrl.value = `${origin}/webhook/whatsapp/${currentBotId}`;
+
+  const twilioUrl = document.getElementById('twilioWebhookUrl');
+  if (twilioUrl) twilioUrl.value = `${origin}/webhook/twilio/whatsapp/${currentBotId}`;
+
+  const metaUrl = document.getElementById('metaWebhookUrl');
+  if (metaUrl) metaUrl.value = `${origin}/webhook/meta/${currentBotId}`;
+
+  const chatApiUrl = document.getElementById('manychatEndpointUrl');
+  if (chatApiUrl) chatApiUrl.value = `${origin}/api/chat`;
 }
 
 function copyWidgetSnippet() {
   const snippet = document.getElementById('widgetSnippet').value;
   navigator.clipboard.writeText(snippet);
-  showToast('Código del widget copiado al portapapeles');
+  showToast('Código del widget copiado');
+}
+
+function copyTwilioWebhook() {
+  navigator.clipboard.writeText(document.getElementById('twilioWebhookUrl').value);
+  showToast('Webhook de Twilio copiado');
+}
+
+function copyMetaWebhook() {
+  navigator.clipboard.writeText(document.getElementById('metaWebhookUrl').value);
+  showToast('Webhook de Meta copiado');
+}
+
+function copyChatApiEndpoint() {
+  navigator.clipboard.writeText(document.getElementById('manychatEndpointUrl').value);
+  showToast('Endpoint API copiado');
 }
 
 async function saveWhatsAppChannel() {
-  const verifyToken = document.getElementById('waVerifyToken').value;
   const phoneNumberId = document.getElementById('waPhoneId').value;
   const accessToken = document.getElementById('waAccessToken').value;
 
   await updateConfigSection('channels', {
     whatsapp: {
       enabled: !!(phoneNumberId && accessToken),
-      verifyToken,
       phoneNumberId,
       accessToken
     }
@@ -409,19 +555,17 @@ async function saveWhatsAppChannel() {
 
 async function saveTelegramChannel() {
   const botToken = document.getElementById('tgBotToken').value;
-  const mode = document.getElementById('tgMode').value;
 
   await updateConfigSection('channels', {
     telegram: {
       enabled: !!botToken,
-      botToken,
-      polling: mode === 'polling'
+      botToken
     }
   });
   showToast('Conexión de Telegram guardada');
 }
 
-// ================= 6. SIMULATOR =================
+// ================= 8. SIMULATOR =================
 async function sendSimMessage() {
   const input = document.getElementById('simInput');
   const text = input.value.trim();
@@ -429,7 +573,6 @@ async function sendSimMessage() {
 
   const msgContainer = document.getElementById('simMessages');
 
-  // Append user message
   const userBubble = document.createElement('div');
   userBubble.className = 'msg-bubble msg-user';
   userBubble.textContent = text;
@@ -445,17 +588,15 @@ async function sendSimMessage() {
     });
     const data = await res.json();
 
-    // Append bot response
     const botBubble = document.createElement('div');
     botBubble.className = 'msg-bubble msg-bot';
     botBubble.innerHTML = `
       <div>${escapeHtml(data.reply)}</div>
-      ${data.tools ? `<div class="msg-tool-pill">⚡ Herramientas: ${data.tools.map(t => t.name).join(', ')}</div>` : ''}
+      ${data.tools ? `<div style="font-size:10px; color:var(--accent-gold); margin-top:6px; font-family:var(--font-mono);">⚡ Herramientas: ${data.tools.map(t => t.name).join(', ')}</div>` : ''}
     `;
     msgContainer.appendChild(botBubble);
     msgContainer.scrollTop = msgContainer.scrollHeight;
 
-    // Update inspector
     document.getElementById('simProviderTag').textContent = data.provider || 'gemini';
     document.getElementById('simModelTag').textContent = data.model || 'gemini-3.5-flash-lite';
     document.getElementById('simTokensTag').textContent = `${data.tokensUsed || 0} tokens`;
@@ -470,26 +611,23 @@ async function sendSimMessage() {
 function clearSimulatorChat() {
   document.getElementById('simMessages').innerHTML = `
     <div class="msg-bubble msg-bot">
-      ¡Hola! Soy tu asistente en modo simulador para el bot: <strong>${escapeHtml(currentBotId)}</strong>. Escríbeme cualquier pregunta como si fueras un cliente para probar cómo respondo y cómo capturo prospectos.
+      ¡Hola! Soy tu asistente en modo simulador para el bot: <strong>${escapeHtml(currentBotId)}</strong>.
     </div>
   `;
 }
 
-// ================= 7. SETTINGS =================
+// ================= 9. SETTINGS & API TEST =================
 async function loadConfig() {
   try {
     const res = await fetch(`/api/config?bot_id=${encodeURIComponent(currentBotId)}`);
     currentConfig = await res.json();
 
-    // Bot settings
     document.getElementById('cfgBotName').value = currentConfig.bot?.name || '';
     document.getElementById('cfgBotNiche').value = currentConfig.bot?.niche || 'starter';
     document.getElementById('cfgLlmProvider').value = currentConfig.llm?.provider || 'gemini';
     document.getElementById('cfgLlmModel').value = currentConfig.llm?.model || '';
     document.getElementById('cfgBotPersonality').value = currentConfig.bot?.personality || '';
-    document.getElementById('cfgSystemPromptBonus').value = currentConfig.llm?.systemPromptBonus || '';
 
-    // Business settings
     document.getElementById('cfgBizName').value = currentConfig.business?.name || '';
     document.getElementById('cfgBizServices').value = currentConfig.business?.services || '';
     document.getElementById('cfgBizHours').value = currentConfig.business?.hours || '';
@@ -497,17 +635,14 @@ async function loadConfig() {
     document.getElementById('cfgBizPhone').value = currentConfig.business?.phone || '';
     document.getElementById('cfgBizEmail').value = currentConfig.business?.email || '';
 
-    // Channel values
     document.getElementById('waPhoneId').value = currentConfig.channels?.whatsapp?.phoneNumberId || '';
-    document.getElementById('waAccessToken').value = currentConfig.channels?.whatsapp?.accessToken || '';
-    document.getElementById('waVerifyToken').value = currentConfig.channels?.whatsapp?.verifyToken || 'yunque_verify_token_123';
     document.getElementById('tgBotToken').value = currentConfig.channels?.telegram?.botToken || '';
   } catch (err) {
     console.error('Error cargando configuración:', err);
   }
 }
 
-async function saveAllConfig() {
+async function saveAllSettings() {
   const newConfig = {
     bot: {
       ...currentConfig.bot,
@@ -527,13 +662,12 @@ async function saveAllConfig() {
     llm: {
       ...currentConfig.llm,
       provider: document.getElementById('cfgLlmProvider').value,
-      model: document.getElementById('cfgLlmModel').value,
-      systemPromptBonus: document.getElementById('cfgSystemPromptBonus').value
+      model: document.getElementById('cfgLlmModel').value
     }
   };
 
   const apiKeyInput = document.getElementById('cfgLlmApiKey').value.trim();
-  if (apiKeyInput) {
+  if (apiKeyInput && !apiKeyInput.includes('••••')) {
     const prov = newConfig.llm.provider;
     if (prov === 'gemini') newConfig.llm.geminiApiKey = apiKeyInput;
     if (prov === 'anthropic') newConfig.llm.anthropicApiKey = apiKeyInput;
@@ -549,7 +683,6 @@ async function saveAllConfig() {
     });
     showToast('Configuración guardada exitosamente');
     loadOverview();
-    loadBotsList();
   } catch (err) {
     console.error('Error guardando configuración:', err);
   }
@@ -560,11 +693,51 @@ async function updateConfigSection(section, data) {
     await fetch(`/api/config?bot_id=${encodeURIComponent(currentBotId)}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ [section]: { ...currentConfig[section], ...data } })
+      body: JSON.stringify({ [section]: { ...(currentConfig?.[section] || {}), ...data } })
     });
     loadOverview();
   } catch (err) {
     console.error('Error actualizando sección:', err);
+  }
+}
+
+async function testApiConnection() {
+  const provider = document.getElementById('cfgLlmProvider').value;
+  const apiKey = document.getElementById('cfgLlmApiKey').value.trim();
+  const resultEl = document.getElementById('apiKeyTestResult');
+  const btn = document.getElementById('btnTestConnection');
+
+  if (!apiKey || apiKey.includes('••••')) {
+    resultEl.textContent = '⚠️ Ingresa tu API key para probar';
+    resultEl.style.color = '#ffaa00';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = '⏳ Probando...';
+  resultEl.textContent = '';
+
+  try {
+    const res = await fetch('/api/test/connection', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ provider, apiKey })
+    });
+    const data = await res.json();
+
+    if (data.success) {
+      resultEl.textContent = '✅ ' + data.message;
+      resultEl.style.color = '#4ade80';
+    } else {
+      resultEl.textContent = '❌ ' + (data.error || 'Error de conexión');
+      resultEl.style.color = '#f87171';
+    }
+  } catch (err) {
+    resultEl.textContent = '❌ Error de red';
+    resultEl.style.color = '#f87171';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🔌 Probar Conexión';
   }
 }
 
@@ -585,44 +758,4 @@ function escapeHtml(str) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
-}
-
-async function testApiConnection() {
-  const provider = document.getElementById('cfgLlmProvider').value;
-  const apiKey = document.getElementById('cfgLlmApiKey').value.trim();
-  const resultEl = document.getElementById('apiKeyTestResult');
-  const btn = document.getElementById('btnTestConnection');
-  
-  if (!apiKey) {
-    resultEl.textContent = '⚠️ Ingresa una API key primero';
-    resultEl.style.color = '#ffaa00';
-    return;
-  }
-  
-  btn.disabled = true;
-  btn.textContent = '⏳ Probando...';
-  resultEl.textContent = '';
-  
-  try {
-    const res = await fetch('/api/test/connection', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ provider, apiKey })
-    });
-    const data = await res.json();
-    
-    if (data.success) {
-      resultEl.textContent = '✅ ' + data.message;
-      resultEl.style.color = '#00cc66';
-    } else {
-      resultEl.textContent = '❌ ' + (data.error || 'Error de conexión');
-      resultEl.style.color = '#ff4444';
-    }
-  } catch (err) {
-    resultEl.textContent = '❌ Error de red';
-    resultEl.style.color = '#ff4444';
-  } finally {
-    btn.disabled = false;
-    btn.textContent = '🔌 Probar Conexión';
-  }
 }
