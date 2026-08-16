@@ -14,39 +14,16 @@ export class UniversalLlmEngine {
    * Normalize model names to active, valid API identifiers
    */
   normalizeModel(provider, rawModel) {
+    if (rawModel && rawModel.trim()) return rawModel.trim();
     const p = (provider || 'gemini').toLowerCase();
-    const m = (rawModel || '').trim().toLowerCase();
 
-    if (p === 'gemini') {
-      if (m.includes('1.5-pro') || m.includes('pro')) return 'gemini-1.5-pro';
-      if (m.includes('1.5-flash')) return 'gemini-1.5-flash';
-      if (m.includes('flash-lite') || m.includes('2.0-flash-lite')) return 'gemini-2.0-flash-lite-preview-02-05';
-      return 'gemini-2.0-flash';
-    }
+    if (p === 'gemini') return 'gemini-3.5-flash-lite';
+    if (p === 'anthropic') return 'claude-sonnet-5';
+    if (p === 'openai') return 'gpt-5.6-luna';
+    if (p === 'grok') return 'grok-4.6';
+    if (p === 'ollama') return 'llama3';
 
-    if (p === 'anthropic') {
-      if (m.includes('opus')) return 'claude-3-opus-20240229';
-      if (m.includes('haiku')) return 'claude-3-5-haiku-20241022';
-      return 'claude-3-5-sonnet-20241022';
-    }
-
-    if (p === 'openai') {
-      if (m.includes('gpt-4o-mini') || m.includes('mini')) return 'gpt-4o-mini';
-      if (m.includes('gpt-4o')) return 'gpt-4o';
-      if (m.includes('gpt-3.5')) return 'gpt-3.5-turbo';
-      return 'gpt-4o-mini';
-    }
-
-    if (p === 'grok') {
-      if (m.includes('vision')) return 'grok-2-vision-1212';
-      return 'grok-2-latest';
-    }
-
-    if (p === 'ollama') {
-      return rawModel || 'llama3';
-    }
-
-    return rawModel || 'mock';
+    return 'gemini-3.5-flash-lite';
   }
 
   /**

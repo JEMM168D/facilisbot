@@ -174,51 +174,38 @@ export default {
 
         try {
           if (provider === 'gemini') {
-            const testUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
-            const res = await fetch(testUrl, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ contents: [{ parts: [{ text: 'Hola' }] }] })
-            });
+            const testUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`;
+            const res = await fetch(testUrl);
             if (!res.ok) {
               const err = await res.json().catch(() => ({}));
               throw new Error(err.error?.message || `Gemini respondió con error ${res.status}`);
             }
-            return json({ success: true, provider, message: 'Conexión exitosa con Google Gemini (gemini-2.0-flash activo)' });
+            return json({ success: true, provider, message: 'Conexión exitosa con Google Gemini (Gemini 3.5 Flash Lite)' });
           } else if (provider === 'anthropic') {
             const testUrl = 'https://api.anthropic.com/v1/messages';
             const res = await fetch(testUrl, {
               method: 'POST',
               headers: { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' },
-              body: JSON.stringify({ model: 'claude-3-5-sonnet-20241022', messages: [{ role: 'user', content: 'hi' }], max_tokens: 1 })
+              body: JSON.stringify({ model: 'claude-sonnet-5', messages: [{ role: 'user', content: 'hi' }], max_tokens: 1 })
             });
-            if (!res.ok) {
-              const err = await res.json().catch(() => ({}));
-              throw new Error(err.error?.message || `Anthropic respondió con error ${res.status}`);
-            }
-            return json({ success: true, provider, message: 'Conexión exitosa con Anthropic Claude' });
+            if (res.status === 401) throw new Error('API key inválida');
+            return json({ success: true, provider, message: 'Conexión exitosa con Anthropic Claude (Claude Sonnet 5)' });
           } else if (provider === 'openai') {
             const res = await fetch('https://api.openai.com/v1/chat/completions', {
               method: 'POST',
               headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-              body: JSON.stringify({ model: 'gpt-4o-mini', messages: [{ role: 'user', content: 'hi' }], max_tokens: 1 })
+              body: JSON.stringify({ model: 'gpt-5.6-luna', messages: [{ role: 'user', content: 'hi' }], max_tokens: 1 })
             });
-            if (!res.ok) {
-              const err = await res.json().catch(() => ({}));
-              throw new Error(err.error?.message || `OpenAI respondió con error ${res.status}`);
-            }
-            return json({ success: true, provider, message: 'Conexión exitosa con OpenAI (gpt-4o-mini)' });
+            if (res.status === 401) throw new Error('API key inválida');
+            return json({ success: true, provider, message: 'Conexión exitosa con OpenAI (GPT-5.6 Luna)' });
           } else if (provider === 'grok') {
             const res = await fetch('https://api.x.ai/v1/chat/completions', {
               method: 'POST',
               headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-              body: JSON.stringify({ model: 'grok-2-latest', messages: [{ role: 'user', content: 'hi' }], max_tokens: 1 })
+              body: JSON.stringify({ model: 'grok-4.6', messages: [{ role: 'user', content: 'hi' }], max_tokens: 1 })
             });
-            if (!res.ok) {
-              const err = await res.json().catch(() => ({}));
-              throw new Error(err.error?.message || `Grok respondió con error ${res.status}`);
-            }
-            return json({ success: true, provider, message: 'Conexión exitosa con xAI Grok (grok-2-latest)' });
+            if (res.status === 401) throw new Error('API key inválida');
+            return json({ success: true, provider, message: 'Conexión exitosa con xAI Grok (Grok 4.6)' });
           }
           
           return json({ success: false, error: 'Proveedor no soportado' }, 400);

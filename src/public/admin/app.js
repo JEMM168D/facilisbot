@@ -669,14 +669,14 @@ function onProviderChange(provider) {
   const modelInput = document.getElementById('cfgLlmModel');
   const keyInput = document.getElementById('cfgLlmApiKey');
   const defaults = {
-    'gemini': 'gemini-2.0-flash',
-    'anthropic': 'claude-3-5-sonnet-20241022',
-    'openai': 'gpt-4o-mini',
-    'grok': 'grok-2-latest',
-    'mock': 'simulador-offline'
+    'gemini': 'gemini-3.5-flash-lite',
+    'anthropic': 'claude-sonnet-5',
+    'openai': 'gpt-5.6-luna',
+    'grok': 'grok-4.6',
+    'mock': 'mock'
   };
 
-  modelInput.value = defaults[provider] || 'gemini-2.0-flash';
+  modelInput.value = defaults[provider] || 'gemini-3.5-flash-lite';
   keyInput.placeholder = `Pega tu API Key de ${provider.toUpperCase()}...`;
 }
 
@@ -688,7 +688,7 @@ async function loadConfig() {
     document.getElementById('cfgBotName').value = currentConfig.bot?.name || '';
     document.getElementById('cfgBotNiche').value = currentConfig.bot?.niche || 'starter';
     document.getElementById('cfgLlmProvider').value = currentConfig.llm?.provider || 'gemini';
-    document.getElementById('cfgLlmModel').value = currentConfig.llm?.model || 'gemini-2.0-flash';
+    document.getElementById('cfgLlmModel').value = currentConfig.llm?.model || 'gemini-3.5-flash-lite';
     document.getElementById('cfgBotPersonality').value = currentConfig.bot?.personality || '';
 
     // If API key exists, show placeholder indicator
@@ -720,7 +720,7 @@ async function loadConfig() {
 
 async function saveAllSettings() {
   const prov = document.getElementById('cfgLlmProvider').value;
-  const newModel = document.getElementById('cfgLlmModel').value || (prov === 'gemini' ? 'gemini-2.0-flash' : 'gpt-4o-mini');
+  const newModel = document.getElementById('cfgLlmModel').value || (prov === 'gemini' ? 'gemini-3.5-flash-lite' : 'gpt-5.6-luna');
 
   const newConfig = {
     bot: {
