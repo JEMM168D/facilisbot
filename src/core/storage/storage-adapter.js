@@ -88,17 +88,22 @@ class CloudflareStorageAdapter {
 
   // --- Conversations ---
 
-  async getOrCreateConversation(channel, userId, userName, botId) {
+  async getOrCreateConversation(channel = 'web', userId = 'user_1', userName = '', botId = 'default') {
+    const cleanChannel = channel || 'web';
+    const cleanUserId = userId || 'user_1';
+    const cleanBotId = botId || 'default';
+    const cleanUserName = userName || '';
+
     let conv = await this.db.prepare(
       'SELECT * FROM conversations WHERE channel = ? AND user_id = ? AND bot_id = ?'
-    ).bind(channel, userId, botId).first();
+    ).bind(cleanChannel, cleanUserId, cleanBotId).first();
 
     if (!conv) {
       const id = 'conv_' + crypto.randomUUID().slice(0, 8);
       await this.db.prepare(`
         INSERT INTO conversations (id, bot_id, channel, user_id, user_name, status, created_at, updated_at) 
         VALUES (?, ?, ?, ?, ?, 'active', datetime('now'), datetime('now'))
-      `).bind(id, botId, channel, userId, userName).run();
+      `).bind(id, cleanBotId, cleanChannel, cleanUserId, cleanUserName).run();
       
       conv = await this.getConversation(id);
     }
@@ -109,9 +114,9 @@ class CloudflareStorageAdapter {
     return await this.db.prepare('SELECT * FROM conversations WHERE id = ?').bind(id).first();
   }
 
-  async listConversations({ channel, status, botId, limit = 50, offset = 0 } = {}) {
+  async listConversations({ channel, status, botId = 'default', limit = 50, offset = 0 } = {}) {
     let query = 'SELECT * FROM conversations WHERE bot_id = ?';
-    const params = [botId];
+    const params = [botId || 'default'];
     
     if (channel) {
       query += ' AND channel = ?';
@@ -123,7 +128,7 @@ class CloudflareStorageAdapter {
     }
     
     query += ' ORDER BY updated_at DESC LIMIT ? OFFSET ?';
-    params.push(limit, offset);
+    params.push(limit || 50, offset || 0);
 
     const { results } = await this.db.prepare(query).bind(...params).all();
     return results || [];
@@ -132,19 +137,23 @@ class CloudflareStorageAdapter {
   async updateConversationStatus(id, status) {
     await this.db.prepare(
       "UPDATE conversations SET status = ?, updated_at = datetime('now') WHERE id = ?"
-    ).bind(status, id).run();
+    ).bind(status || 'active', id).run();
   }
 
   // --- Messages ---
 
-  async addMessage({ conversationId, botId, role, content, toolCalls = null, tokens = 0 }) {
+  async addMessage({ conversationId, botId = 'default', role = 'user', content = '', toolCalls = null, tokens = 0 }) {
     const id = 'msg_' + crypto.randomUUID().slice(0, 8);
     const toolCallsStr = toolCalls ? JSON.stringify(toolCalls) : null;
+    const cleanBotId = botId || 'default';
+    const cleanContent = content || '';
+    const cleanRole = role || 'user';
+    const cleanTokens = tokens || 0;
     
     await this.db.prepare(`
       INSERT INTO messages (id, conversation_id, bot_id, role, content, tool_calls, tokens, created_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
-    `).bind(id, conversationId, botId, role, content, toolCallsStr, tokens).run();
+    `).bind(id, conversationId, cleanBotId, cleanRole, cleanContent, toolCallsStr, cleanTokens).run();
     
     await this.db.prepare(
       "UPDATE conversations SET updated_at = datetime('now') WHERE id = ?"
@@ -153,11 +162,11 @@ class CloudflareStorageAdapter {
     return {
       id,
       conversationId,
-      botId,
-      role,
-      content,
+      botId: cleanBotId,
+      role: cleanRole,
+      content: cleanContent,
       toolCalls,
-      tokens,
+      tokens: cleanTokens,
       createdAt: new Date().toISOString()
     };
   }
@@ -165,7 +174,7 @@ class CloudflareStorageAdapter {
   async getMessages(conversationId, limit = 50) {
     const { results } = await this.db.prepare(
       'SELECT * FROM messages WHERE conversation_id = ? ORDER BY created_at DESC LIMIT ?'
-    ).bind(conversationId, limit).all();
+    ).bind(conversationId, limit || 50).all();
     
     // Return in chronological order
     return (results || []).reverse().map(msg => ({
@@ -176,14 +185,24 @@ class CloudflareStorageAdapter {
 
   // --- Leads ---
 
-  async saveLead({ botId, name, phone, email, interest, budget, notes, channel, status = 'new' }) {
+  async saveLead({ botId = 'default', name = '', phone = '', email = '', interest = '', budget = '', notes = '', channel = 'web', status = 'new' }) {
+    const cleanBotId = botId || 'default';
+    const cleanName = name || '';
+    const cleanPhone = phone || '';
+    const cleanEmail = email || '';
+    const cleanInterest = interest || '';
+    const cleanBudget = budget || '';
+    const cleanNotes = notes || '';
+    const cleanChannel = channel || 'web';
+    const cleanStatus = status || 'new';
+
     // Basic deduplication
     let query = 'SELECT id FROM leads WHERE bot_id = ? AND (';
-    const params = [botId];
+    const params = [cleanBotId];
     const conditions = [];
     
-    if (phone) { conditions.push('phone = ?'); params.push(phone); }
-    if (email) { conditions.push('email = ?'); params.push(email); }
+    if (cleanPhone) { conditions.push('phone = ?'); params.push(cleanPhone); }
+    if (cleanEmail) { conditions.push('email = ?'); params.push(cleanEmail); }
     
     if (conditions.length > 0) {
       query += conditions.join(' OR ') + ') LIMIT 1';
@@ -191,8 +210,8 @@ class CloudflareStorageAdapter {
       
       if (existing) {
         // Update existing lead
-        await this.updateLead(existing.id, { name, phone, email, interest, budget, notes, status });
-        return { id: existing.id, botId, name, phone, email, interest, budget, notes, channel, status };
+        await this.updateLead(existing.id, { name: cleanName, phone: cleanPhone, email: cleanEmail, interest: cleanInterest, budget: cleanBudget, notes: cleanNotes, status: cleanStatus });
+        return { id: existing.id, botId: cleanBotId, name: cleanName, phone: cleanPhone, email: cleanEmail, interest: cleanInterest, budget: cleanBudget, notes: cleanNotes, channel: cleanChannel, status: cleanStatus };
       }
     }
     
@@ -201,8 +220,8 @@ class CloudflareStorageAdapter {
     await this.db.prepare(`
       INSERT INTO leads (id, bot_id, name, phone, email, interest, budget, notes, channel, status, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
-    `).bind(id, botId, name, phone, email, interest, budget, notes, channel, status).run();
-    return { id, botId, name, phone, email, interest, budget, notes, channel, status };
+    `).bind(id, cleanBotId, cleanName, cleanPhone, cleanEmail, cleanInterest, cleanBudget, cleanNotes, cleanChannel, cleanStatus).run();
+    return { id, botId: cleanBotId, name: cleanName, phone: cleanPhone, email: cleanEmail, interest: cleanInterest, budget: cleanBudget, notes: cleanNotes, channel: cleanChannel, status: cleanStatus };
   }
 
   async listLeads({ botId, status, search, limit = 50, offset = 0 } = {}) {
@@ -265,23 +284,37 @@ class CloudflareStorageAdapter {
 
   // --- Metrics ---
 
-  async recordLlmUsage(botId, provider, tokens) {
-    const id = crypto.randomUUID();
+  async recordLlmUsage(botId = 'default', provider = 'gemini', tokens = 0) {
+    const cleanBotId = botId || 'default';
+    const cleanProvider = provider || 'gemini';
+    const cleanTokens = tokens || 0;
+    const month = new Date().toISOString().slice(0, 7);
+    const rate = COST_RATES[cleanProvider] || 0.0001;
+    const cost = (cleanTokens / 1000) * rate;
+
     await this.db.prepare(`
-      INSERT INTO metrics (id, bot_id, type, provider, value, created_at)
-      VALUES (?, ?, 'tokens', ?, ?, datetime('now'))
-    `).bind(id, botId, provider, tokens).run();
+      INSERT INTO metrics (bot_id, provider, tokens_used, calls_made, cost_usd, month)
+      VALUES (?, ?, ?, 1, ?, ?)
+      ON CONFLICT(bot_id, provider, month) DO UPDATE SET
+        tokens_used = tokens_used + excluded.tokens_used,
+        calls_made = calls_made + 1,
+        cost_usd = cost_usd + excluded.cost_usd
+    `).bind(cleanBotId, cleanProvider, cleanTokens, cost, month).run();
   }
 
-  async getOverviewMetrics(botId) {
+  async getOverviewMetrics(botId = 'default') {
+    const cleanBotId = botId || 'default';
+
     // Total conversations
-    const { totalConversations } = await this.db.prepare('SELECT COUNT(*) as totalConversations FROM conversations WHERE bot_id = ?').bind(botId).first();
+    const totalConvsResult = await this.db.prepare('SELECT COUNT(*) as totalConversations FROM conversations WHERE bot_id = ?').bind(cleanBotId).first();
+    const totalConversations = totalConvsResult?.totalConversations || 0;
     
     // Total leads
-    const { totalLeads } = await this.db.prepare('SELECT COUNT(*) as totalLeads FROM leads WHERE bot_id = ?').bind(botId).first();
+    const totalLeadsResult = await this.db.prepare('SELECT COUNT(*) as totalLeads FROM leads WHERE bot_id = ?').bind(cleanBotId).first();
+    const totalLeads = totalLeadsResult?.totalLeads || 0;
     
     // Status counts for resolution/escalation
-    const { results: statuses } = await this.db.prepare('SELECT status, COUNT(*) as count FROM conversations WHERE bot_id = ? GROUP BY status').bind(botId).all();
+    const { results: statuses } = await this.db.prepare('SELECT status, COUNT(*) as count FROM conversations WHERE bot_id = ? GROUP BY status').bind(cleanBotId).all();
     
     let resolved = 0, escalated = 0;
     for (const row of (statuses || [])) {
@@ -289,32 +322,32 @@ class CloudflareStorageAdapter {
       if (row.status === 'escalated') escalated = row.count;
     }
     
-    const botResolutionRate = totalConversations > 0 ? ((resolved / totalConversations) * 100).toFixed(1) + '%' : '0%';
+    const botResolutionRate = totalConversations > 0 ? ((resolved / totalConversations) * 100).toFixed(1) + '%' : '100%';
     const escalationRate = totalConversations > 0 ? ((escalated / totalConversations) * 100).toFixed(1) + '%' : '0%';
 
-    // Usage
-    const { results: usage } = await this.db.prepare('SELECT provider, SUM(value) as tokens FROM metrics WHERE bot_id = ? AND type = "tokens" GROUP BY provider').bind(botId).all();
+    // Usage from metrics table
+    const { results: usage } = await this.db.prepare('SELECT provider, SUM(tokens_used) as tokens, SUM(cost_usd) as cost FROM metrics WHERE bot_id = ? GROUP BY provider').bind(cleanBotId).all();
     
     let totalTokens = 0;
     let estimatedCostUsd = 0;
     const providerUsage = {};
     
     for (const row of (usage || [])) {
-      totalTokens += row.tokens;
-      providerUsage[row.provider] = row.tokens;
-      const rate = COST_RATES[row.provider] || 0;
-      estimatedCostUsd += (row.tokens / 1000) * rate;
+      totalTokens += (row.tokens || 0);
+      estimatedCostUsd += (row.cost || 0);
+      providerUsage[row.provider] = row.tokens || 0;
     }
 
     return {
       totalConversations,
-      conversations24h: 0, // Simplified for now
+      conversations24h: 0,
       messages24h: 0,
       totalLeads,
       escalationRate,
+      escalatedCount: escalated,
       botResolutionRate,
       totalTokens,
-      estimatedCostUsd,
+      estimatedCostUsd: estimatedCostUsd.toFixed(4),
       providerUsage
     };
   }
