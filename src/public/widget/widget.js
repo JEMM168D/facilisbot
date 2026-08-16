@@ -1,3 +1,6 @@
+/**
+ * FacilisBot — Web Chat Widget
+ */
 (function () {
   const currentScript = document.currentScript || document.querySelector('script[src*="widget.js"]');
   const serverOrigin = currentScript ? new URL(currentScript.src).origin : window.location.origin;

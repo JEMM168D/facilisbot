@@ -328,7 +328,7 @@ export default {
       }
 
       // Read single KB document
-      if (pathname.match(/^\/api\/kb\/.+$/) && request.method === 'GET' && !pathname.includes('export')) {
+      if (pathname.match(/^\/api\/kb\/.+$/) && request.method === 'GET' && !pathname.includes('export') && pathname !== '/api/kb/gaps') {
         const filename = decodeURIComponent(pathname.slice('/api/kb/'.length));
         const currentKb = await getKnowledgeBase(reqBotId, storage);
         const doc = currentKb.documents.find(d => d.filename === filename);
@@ -345,7 +345,7 @@ export default {
       }
 
       // Delete KB document
-      if (pathname.match(/^\/api\/kb\/.+$/) && request.method === 'DELETE') {
+      if (pathname.match(/^\/api\/kb\/.+$/) && request.method === 'DELETE' && pathname !== '/api/kb/gaps') {
         const filename = decodeURIComponent(pathname.slice('/api/kb/'.length));
         const currentKb = await getKnowledgeBase(reqBotId, storage);
         const deleted = await currentKb.deleteDocument(reqBotId, filename, storage);
