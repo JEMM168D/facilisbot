@@ -1,5 +1,4 @@
-import fs from 'fs';
-import path from 'path';
+// src/core/config.js
 
 /**
  * Default configuration structure for FacilisBot
@@ -81,16 +80,16 @@ export const DEFAULT_CONFIG = {
     humanEscalationAlertWebhook: ''
   },
   server: {
-    port: process.env.PORT || 3000,
-    adminPassword: process.env.ADMIN_PASSWORD || 'admin123',
-    baseUrl: process.env.BASE_URL || 'http://localhost:3000'
+    port: 3000,
+    adminPassword: 'admin123',
+    baseUrl: 'http://localhost:3000'
   }
 };
 
 /**
  * Load and merge configuration from local file, bot directory, env vars, and defaults
  */
-export function loadConfig(botIdOrBaseDir = 'default', baseDir = process.cwd()) {
+export async function loadConfig(botIdOrBaseDir = 'default', storage = null, baseDir = process.cwd()) {
   let botId = 'default';
   let actualBaseDir = baseDir;
 
@@ -103,51 +102,64 @@ export function loadConfig(botIdOrBaseDir = 'default', baseDir = process.cwd()) 
   let config = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
   config.bot.id = botId;
 
-  // Paths to try
-  const configPaths = [];
+  if (storage) {
+    const storedConfig = await storage.getConfig(botId);
+    if (storedConfig) {
+      config = deepMerge(config, storedConfig);
+      if (!config.bot.id) config.bot.id = botId;
+    }
+  } else {
+    const fs = await import('fs');
+    const path = await import('path');
+    
+    // Paths to try
+    const configPaths = [];
 
-  if (botId && botId !== 'default') {
-    configPaths.push(path.join(actualBaseDir, 'member', 'bots', botId, 'config.json'));
-    configPaths.push(path.join(actualBaseDir, 'member', 'bots', botId, 'config.local.json'));
-  }
+    if (botId && botId !== 'default') {
+      configPaths.push(path.join(actualBaseDir, 'member', 'bots', botId, 'config.json'));
+      configPaths.push(path.join(actualBaseDir, 'member', 'bots', botId, 'config.local.json'));
+    }
 
-  configPaths.push(path.join(actualBaseDir, 'member', 'config.local.json'));
-  configPaths.push(path.join(actualBaseDir, 'bot.config.json'));
-  configPaths.push(path.join(actualBaseDir, 'config.json'));
+    configPaths.push(path.join(actualBaseDir, 'member', 'config.local.json'));
+    configPaths.push(path.join(actualBaseDir, 'bot.config.json'));
+    configPaths.push(path.join(actualBaseDir, 'config.json'));
 
-  for (const configPath of configPaths) {
-    if (fs.existsSync(configPath)) {
-      try {
-        const raw = fs.readFileSync(configPath, 'utf8');
-        const parsed = JSON.parse(raw);
-        config = deepMerge(config, parsed);
-        if (!config.bot.id) config.bot.id = botId;
-        break;
-      } catch (err) {
-        console.warn(`[Config] Advertencia al leer ${configPath}:`, err.message);
+    for (const configPath of configPaths) {
+      if (fs.existsSync(configPath)) {
+        try {
+          const raw = fs.readFileSync(configPath, 'utf8');
+          const parsed = JSON.parse(raw);
+          config = deepMerge(config, parsed);
+          if (!config.bot.id) config.bot.id = botId;
+          break;
+        } catch (err) {
+          console.warn(`[Config] Advertencia al leer ${configPath}:`, err.message);
+        }
       }
     }
+    
+    // Override with environment variables if present
+    if (typeof process !== 'undefined' && process.env) {
+      if (process.env.BOT_NAME && botId === 'default') config.bot.name = process.env.BOT_NAME;
+      if (process.env.BOT_NICHE && botId === 'default') config.bot.niche = process.env.BOT_NICHE;
+      if (process.env.LLM_PROVIDER) config.llm.provider = process.env.LLM_PROVIDER;
+      if (process.env.LLM_MODEL) config.llm.model = process.env.LLM_MODEL;
+      if (process.env.GEMINI_API_KEY) config.llm.geminiApiKey = process.env.GEMINI_API_KEY;
+      if (process.env.ANTHROPIC_API_KEY) config.llm.anthropicApiKey = process.env.ANTHROPIC_API_KEY;
+      if (process.env.OPENAI_API_KEY) config.llm.openaiApiKey = process.env.OPENAI_API_KEY;
+      if (process.env.GROK_API_KEY || process.env.XAI_API_KEY) config.llm.grokApiKey = process.env.GROK_API_KEY || process.env.XAI_API_KEY;
+      if (process.env.TELEGRAM_BOT_TOKEN && botId === 'default') {
+        config.channels.telegram.botToken = process.env.TELEGRAM_BOT_TOKEN;
+        config.channels.telegram.enabled = true;
+      }
+      if (process.env.WHATSAPP_TOKEN && botId === 'default') {
+        config.channels.whatsapp.accessToken = process.env.WHATSAPP_TOKEN;
+        config.channels.whatsapp.enabled = true;
+      }
+      if (process.env.ADMIN_PASSWORD) config.server.adminPassword = process.env.ADMIN_PASSWORD;
+      if (process.env.PORT) config.server.port = parseInt(process.env.PORT, 10);
+    }
   }
-
-  // Override with environment variables if present
-  if (process.env.BOT_NAME && botId === 'default') config.bot.name = process.env.BOT_NAME;
-  if (process.env.BOT_NICHE && botId === 'default') config.bot.niche = process.env.BOT_NICHE;
-  if (process.env.LLM_PROVIDER) config.llm.provider = process.env.LLM_PROVIDER;
-  if (process.env.LLM_MODEL) config.llm.model = process.env.LLM_MODEL;
-  if (process.env.GEMINI_API_KEY) config.llm.geminiApiKey = process.env.GEMINI_API_KEY;
-  if (process.env.ANTHROPIC_API_KEY) config.llm.anthropicApiKey = process.env.ANTHROPIC_API_KEY;
-  if (process.env.OPENAI_API_KEY) config.llm.openaiApiKey = process.env.OPENAI_API_KEY;
-  if (process.env.GROK_API_KEY || process.env.XAI_API_KEY) config.llm.grokApiKey = process.env.GROK_API_KEY || process.env.XAI_API_KEY;
-  if (process.env.TELEGRAM_BOT_TOKEN && botId === 'default') {
-    config.channels.telegram.botToken = process.env.TELEGRAM_BOT_TOKEN;
-    config.channels.telegram.enabled = true;
-  }
-  if (process.env.WHATSAPP_TOKEN && botId === 'default') {
-    config.channels.whatsapp.accessToken = process.env.WHATSAPP_TOKEN;
-    config.channels.whatsapp.enabled = true;
-  }
-  if (process.env.ADMIN_PASSWORD) config.server.adminPassword = process.env.ADMIN_PASSWORD;
-  if (process.env.PORT) config.server.port = parseInt(process.env.PORT, 10);
 
   return config;
 }
@@ -155,11 +167,18 @@ export function loadConfig(botIdOrBaseDir = 'default', baseDir = process.cwd()) 
 /**
  * List all registered bots in the system
  */
-export function listBots(baseDir = process.cwd()) {
+export async function listBots(storage = null, baseDir = process.cwd()) {
+  if (storage) {
+    return await storage.listBots();
+  }
+
+  const fs = await import('fs');
+  const path = await import('path');
+  
   const bots = [];
 
   // Default bot
-  const defaultConfig = loadConfig('default', baseDir);
+  const defaultConfig = await loadConfig('default', null, baseDir);
   bots.push({
     id: 'default',
     name: defaultConfig.bot?.name || 'Asistente Principal',
@@ -203,16 +222,26 @@ export function listBots(baseDir = process.cwd()) {
 /**
  * Create a new tenant bot instance with isolated config and KB
  */
-export function createBotInstance(botId, customConfig = {}, baseDir = process.cwd()) {
+export async function createBotInstance(botId, customConfig = {}, storage = null, baseDir = process.cwd()) {
   const cleanId = botId.toLowerCase().replace(/[^a-z0-9_-]/g, '-');
+  const fullConfig = deepMerge(JSON.parse(JSON.stringify(DEFAULT_CONFIG)), customConfig);
+  fullConfig.bot.id = cleanId;
+
+  if (storage) {
+    await storage.createBot(cleanId, fullConfig);
+    return {
+      botId: cleanId,
+      config: fullConfig
+    };
+  }
+
+  const fs = await import('fs');
+  const path = await import('path');
+
   const botDir = path.join(baseDir, 'member', 'bots', cleanId);
   const kbDir = path.join(botDir, 'kb');
 
   fs.mkdirSync(kbDir, { recursive: true });
-
-  const fullConfig = deepMerge(JSON.parse(JSON.stringify(DEFAULT_CONFIG)), customConfig);
-  fullConfig.bot.id = cleanId;
-
   fs.writeFileSync(path.join(botDir, 'config.json'), JSON.stringify(fullConfig, null, 2), 'utf8');
 
   return {
@@ -224,12 +253,21 @@ export function createBotInstance(botId, customConfig = {}, baseDir = process.cw
 }
 
 /**
- * Save configuration to file
+ * Save configuration to file or storage
  */
-export function saveConfig(newConfig, targetFile = null, baseDir = process.cwd()) {
-  let fileToSave = targetFile;
+export async function saveConfig(newConfig, storage = null, targetFile = null, baseDir = process.cwd()) {
   const botId = newConfig.bot?.id || 'default';
 
+  if (storage) {
+    await storage.saveConfig(botId, newConfig);
+    return botId;
+  }
+
+  const fs = await import('fs');
+  const path = await import('path');
+  
+  let fileToSave = targetFile;
+  
   if (!fileToSave) {
     if (botId && botId !== 'default') {
       fileToSave = path.join(baseDir, 'member', 'bots', botId, 'config.json');
@@ -246,7 +284,7 @@ export function saveConfig(newConfig, targetFile = null, baseDir = process.cwd()
   return fileToSave;
 }
 
-function deepMerge(target, source) {
+export function deepMerge(target, source) {
   if (!source) return target;
   const output = Object.assign({}, target);
   for (const key of Object.keys(source)) {

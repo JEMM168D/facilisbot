@@ -1,4 +1,7 @@
-import { botEngine } from '../engine.js';
+/**
+ * Telegram Bot API Handler (Webhook & Polling modes)
+ * Engine is passed via config._engine by the Worker/Server router.
+ */
 
 /**
  * Telegram Bot API Handler (Webhook & Polling modes)
@@ -21,7 +24,10 @@ export class TelegramHandler {
       const botToken = config.channels?.telegram?.botToken;
 
       // Process message
-      const response = await botEngine.processMessage({
+      const engine = config._engine;
+      if (!engine) return { status: 500, error: 'Engine no disponible' };
+
+      const response = await engine.processMessage({
         channel: 'telegram',
         userId: String(chatId),
         userName,

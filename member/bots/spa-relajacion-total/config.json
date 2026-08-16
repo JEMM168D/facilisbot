@@ -1,0 +1,82 @@
+{
+  "bot": {
+    "id": "spa-relajacion-total",
+    "name": "Asistente Spa Relajacion Total",
+    "niche": "spa",
+    "language": "es",
+    "personality": "cercano, servicial, profesional y conciso",
+    "greeting": "¡Hola! Bienvenido a Spa Relajacion Total. ¿En qué te puedo ayudar hoy?",
+    "fallbackMessage": "Disculpa, ¿podrías darme más detalles de tu consulta?",
+    "escalationMessage": "Un momento por favor, te transfiero con un asesor humano."
+  },
+  "business": {
+    "name": "Spa Relajacion Total",
+    "industry": "spa",
+    "description": "Spa Relajacion Total ofrece atención especializada en spa.",
+    "services": "Masaje Sueco (), Facial ()",
+    "hours": "9am - 8pm",
+    "location": "Atención en línea y presencial",
+    "phone": "+1 555-0100",
+    "email": "contacto@spa-relajacion-total.com",
+    "website": "https://spa-relajacion-total.com",
+    "paymentMethods": "Efectivo, Tarjetas de débito/crédito, Transferencia bancaria",
+    "faq": []
+  },
+  "llm": {
+    "provider": "gemini",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": 0.4,
+    "maxTokens": 1000,
+    "systemPromptBonus": ""
+  },
+  "channels": {
+    "whatsapp": {
+      "enabled": false,
+      "provider": "cloud_api",
+      "phoneNumberId": "",
+      "accessToken": "",
+      "verifyToken": "verify_spa-relajacion-total",
+      "twilioAccountSid": "",
+      "twilioAuthToken": "",
+      "twilioPhoneNumber": ""
+    },
+    "telegram": {
+      "enabled": false,
+      "botToken": "",
+      "polling": false
+    },
+    "instagram": {
+      "enabled": false,
+      "pageId": "",
+      "accessToken": "",
+      "verifyToken": "yunque_meta_verify_123"
+    },
+    "messenger": {
+      "enabled": false,
+      "pageId": "",
+      "accessToken": "",
+      "verifyToken": "yunque_meta_verify_123"
+    },
+    "web": {
+      "enabled": true,
+      "title": "Chat de Spa Relajacion Total",
+      "subtitle": "En línea 24/7",
+      "primaryColor": "#ff6a1f",
+      "position": "bottom-right"
+    }
+  },
+  "integrations": {
+    "calComApiKey": "",
+    "calComEventType": "",
+    "googleCalendarUrl": "",
+    "stripeApiKey": "",
+    "mercadoPagoToken": "",
+    "webhookUrl": "",
+    "humanEscalationAlertWebhook": ""
+  },
+  "server": {
+    "port": 3000,
+    "adminPassword": "admin123",
+    "baseUrl": "http://localhost:3000"
+  }
+}

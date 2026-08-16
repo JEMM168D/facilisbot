@@ -1,12 +1,12 @@
-import { db } from '../storage/db.js';
 import { TOOL_DEFINITIONS, executeTool } from '../tools/registry.js';
 
 /**
  * Universal LLM Engine Bridge supporting Gemini, Claude, OpenAI, Grok, Ollama, and Mock.
  */
 export class UniversalLlmEngine {
-  constructor(config = {}) {
+  constructor(config = {}, storage) {
     this.config = config;
+    this.storage = storage;
   }
 
   /**
@@ -55,7 +55,9 @@ export class UniversalLlmEngine {
     }
 
     // Record token usage & cost
-    db.recordLlmUsage(provider, response.tokensUsed || 150);
+    if (this.storage && typeof this.storage.recordLlmUsage === 'function') {
+      await this.storage.recordLlmUsage(this.config.bot?.id || 'default', provider, response.tokensUsed || 150);
+    }
 
     // If the model called a tool, execute it and do a follow-up completion
     if (response.toolCalls && response.toolCalls.length > 0) {
@@ -94,7 +96,7 @@ export class UniversalLlmEngine {
   // ================= GOOGLE GEMINI =================
 
   async callGemini({ model, fullSystemPrompt, messages, temperature, maxTokens }) {
-    const apiKey = this.config.llm?.geminiApiKey || process.env.GEMINI_API_KEY;
+    const apiKey = this.config.llm?.geminiApiKey;
     if (!apiKey) throw new Error('GEMINI_API_KEY no configurada');
 
     // Format tools for Gemini API
@@ -171,7 +173,7 @@ export class UniversalLlmEngine {
   // ================= ANTHROPIC CLAUDE =================
 
   async callAnthropic({ model, fullSystemPrompt, messages, temperature, maxTokens }) {
-    const apiKey = this.config.llm?.anthropicApiKey || process.env.ANTHROPIC_API_KEY;
+    const apiKey = this.config.llm?.anthropicApiKey;
     if (!apiKey) throw new Error('ANTHROPIC_API_KEY no configurada');
 
     const formattedTools = TOOL_DEFINITIONS.map(t => ({
@@ -240,11 +242,11 @@ export class UniversalLlmEngine {
 
   async callOpenAICompatible({ provider, model, fullSystemPrompt, messages, temperature, maxTokens }) {
     let endpoint = 'https://api.openai.com/v1/chat/completions';
-    let apiKey = this.config.llm?.openaiApiKey || process.env.OPENAI_API_KEY;
+    let apiKey = this.config.llm?.openaiApiKey;
 
     if (provider === 'grok') {
       endpoint = 'https://api.x.ai/v1/chat/completions';
-      apiKey = this.config.llm?.grokApiKey || process.env.GROK_API_KEY || process.env.XAI_API_KEY;
+      apiKey = this.config.llm?.grokApiKey;
       if (!apiKey) throw new Error('GROK_API_KEY no configurada');
     } else if (provider === 'ollama') {
       endpoint = this.config.llm?.ollamaBaseUrl || 'http://localhost:11434/v1/chat/completions';

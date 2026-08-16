@@ -5,12 +5,71 @@ let currentBotId = 'default';
 let allLeads = [];
 let allConversations = [];
 
-document.addEventListener('DOMContentLoaded', () => {
+// ================= AUTH / LOGIN =================
+let userRole = 'client'; // 'admin' or 'client'
+
+async function attemptLogin() {
+  const code = document.getElementById('loginAccessCode').value.trim();
+  if (!code) return;
+  
+  const errorEl = document.getElementById('loginError');
+  errorEl.style.display = 'none';
+  
+  try {
+    const res = await fetch('/api/auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code })
+    });
+    const data = await res.json();
+    
+    if (data.success) {
+      sessionStorage.setItem('facilisbot_access_code', code);
+      userRole = data.role;
+      
+      if (data.role === 'admin') {
+        // Admin sees all bots
+        currentBotId = 'default';
+      } else {
+        // Client sees only their bot
+        currentBotId = data.botId || 'default';
+        // Hide bot switcher for clients
+        const switcher = document.getElementById('botSwitcher');
+        if (switcher) switcher.parentElement.style.display = 'none';
+      }
+      
+      document.getElementById('loginOverlay').style.display = 'none';
+      document.getElementById('appContainer').style.display = '';
+      loadBotsList();
+      loadOverview();
+      loadConfig();
+      setupWidgetSnippet();
+    } else {
+      errorEl.textContent = data.error || 'Código de acceso inválido';
+      errorEl.style.display = 'block';
+    }
+  } catch (err) {
+    errorEl.textContent = 'Error de conexión con el servidor';
+    errorEl.style.display = 'block';
+  }
+}
+
+function logout() {
+  sessionStorage.removeItem('facilisbot_access_code');
+  document.getElementById('loginOverlay').style.display = 'flex';
+  document.getElementById('appContainer').style.display = 'none';
+  document.getElementById('loginAccessCode').value = '';
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
   setupNavigation();
-  loadBotsList();
-  loadOverview();
-  loadConfig();
-  setupWidgetSnippet();
+  
+  // Check for existing session
+  const savedCode = sessionStorage.getItem('facilisbot_access_code');
+  if (savedCode) {
+    document.getElementById('loginAccessCode').value = savedCode;
+    await attemptLogin();
+  }
 });
 
 // ================= BOT SWITCHER =================
@@ -526,4 +585,44 @@ function escapeHtml(str) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
+}
+
+async function testApiConnection() {
+  const provider = document.getElementById('cfgLlmProvider').value;
+  const apiKey = document.getElementById('cfgLlmApiKey').value.trim();
+  const resultEl = document.getElementById('apiKeyTestResult');
+  const btn = document.getElementById('btnTestConnection');
+  
+  if (!apiKey) {
+    resultEl.textContent = '⚠️ Ingresa una API key primero';
+    resultEl.style.color = '#ffaa00';
+    return;
+  }
+  
+  btn.disabled = true;
+  btn.textContent = '⏳ Probando...';
+  resultEl.textContent = '';
+  
+  try {
+    const res = await fetch('/api/test/connection', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ provider, apiKey })
+    });
+    const data = await res.json();
+    
+    if (data.success) {
+      resultEl.textContent = '✅ ' + data.message;
+      resultEl.style.color = '#00cc66';
+    } else {
+      resultEl.textContent = '❌ ' + (data.error || 'Error de conexión');
+      resultEl.style.color = '#ff4444';
+    }
+  } catch (err) {
+    resultEl.textContent = '❌ Error de red';
+    resultEl.style.color = '#ff4444';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🔌 Probar Conexión';
+  }
 }

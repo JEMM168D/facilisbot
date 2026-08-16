@@ -1,26 +1,60 @@
-import fs from 'fs';
-import path from 'path';
-
 /**
  * High performance BM25 / TF-IDF Knowledge Base Search Engine
  * for RAG and accurate business context retrieval without hallucinations.
  */
 export class KnowledgeBase {
   constructor(kbDir = null) {
-    this.kbDir = kbDir || path.join(process.cwd(), 'member', 'kb');
-    this.fallbackKbDir = path.join(process.cwd(), 'kb');
+    this.kbDir = kbDir;
+    this.fallbackKbDir = null; // Set dynamically if no storage
     this.documents = [];
     this.chunks = [];
     this.catalog = [];
-    this.reload();
   }
 
-  reload() {
+  static async create(botId, storage, baseDir = null) {
+    const kb = new KnowledgeBase();
+    await kb.init(botId, storage, baseDir);
+    return kb;
+  }
+
+  async init(botId, storage, baseDir = null) {
     this.documents = [];
     this.chunks = [];
     this.catalog = [];
 
-    const dirsToScan = [this.kbDir, this.fallbackKbDir];
+    if (storage) {
+      const documents = await storage.listKBDocuments(botId);
+      for (const doc of documents) {
+        const filename = typeof doc === 'string' ? doc : (doc?.filename || doc?.name);
+        if (!filename) continue;
+        const content = await storage.getKBDocument(botId, filename);
+        if (content) {
+          this.indexContent(filename, content);
+        }
+      }
+    } else {
+      const path = await import('path');
+      const actualBaseDir = baseDir || process.cwd();
+      this.kbDir = path.join(actualBaseDir, 'member', 'kb');
+      this.fallbackKbDir = path.join(actualBaseDir, 'kb');
+      
+      if (botId && botId !== 'default') {
+        this.kbDir = path.join(actualBaseDir, 'member', 'bots', botId, 'kb');
+      }
+
+      await this.reloadFromFs();
+    }
+  }
+
+  async reloadFromFs() {
+    this.documents = [];
+    this.chunks = [];
+    this.catalog = [];
+
+    const fs = await import('fs');
+    const path = await import('path');
+
+    const dirsToScan = [this.kbDir, this.fallbackKbDir].filter(Boolean);
     const scannedFiles = new Set();
 
     for (const dir of dirsToScan) {
@@ -32,17 +66,18 @@ export class KnowledgeBase {
           const fullPath = path.join(dir, file);
           const stat = fs.statSync(fullPath);
           if (stat.isFile()) {
-            this.indexFile(fullPath, file);
+            const content = fs.readFileSync(fullPath, 'utf8');
+            this.indexContent(file, content, fullPath);
           }
         }
       }
     }
   }
 
-  indexFile(filePath, filename) {
-    const ext = path.extname(filename).toLowerCase();
-    const rawContent = fs.readFileSync(filePath, 'utf8');
-
+  indexContent(filename, rawContent, filePath = null) {
+    const p = filename.includes('.') ? filename.substring(filename.lastIndexOf('.')) : '';
+    const ext = p.toLowerCase();
+    
     const doc = {
       filename,
       filePath,
@@ -207,24 +242,81 @@ export class KnowledgeBase {
   /**
    * Save or update a knowledge base file
    */
-  saveDocument(filename, content) {
-    if (!fs.existsSync(this.kbDir)) {
-      fs.mkdirSync(this.kbDir, { recursive: true });
+  async saveDocument(botId, filename, content, storage) {
+    if (storage) {
+      await storage.saveKBDocument(botId, filename, content);
+    } else {
+      const fs = await import('fs');
+      const path = await import('path');
+      
+      if (!fs.existsSync(this.kbDir)) {
+        fs.mkdirSync(this.kbDir, { recursive: true });
+      }
+      const targetPath = path.join(this.kbDir, filename);
+      fs.writeFileSync(targetPath, content, 'utf8');
+      
+      // Update local array for fs paths
+      const docIndex = this.documents.findIndex(d => d.filename === filename);
+      if (docIndex !== -1) {
+        this.documents[docIndex].filePath = targetPath;
+      }
     }
-    const targetPath = path.join(this.kbDir, filename);
-    fs.writeFileSync(targetPath, content, 'utf8');
-    this.reload();
-    return { success: true, filename, path: targetPath };
+    
+    // Remove old chunks/doc for this file before re-indexing
+    this.documents = this.documents.filter(d => d.filename !== filename);
+    this.chunks = this.chunks.filter(c => c.source !== filename);
+    
+    // Rebuild catalog to ensure old entries from this file are removed
+    this.catalog = [];
+    
+    this.indexContent(filename, content);
+    
+    // Quick hack to restore catalog from all documents
+    this.documents.forEach(doc => {
+      if (doc.filename !== filename && doc.ext === '.json') {
+        try {
+          const parsed = JSON.parse(doc.rawContent);
+          if (Array.isArray(parsed)) {
+            this.catalog.push(...parsed);
+          }
+        } catch(e) {}
+      }
+    });
+
+    return { success: true, filename };
   }
 
-  deleteDocument(filename) {
-    const targetPath = path.join(this.kbDir, filename);
-    if (fs.existsSync(targetPath)) {
-      fs.unlinkSync(targetPath);
-      this.reload();
-      return true;
+  async deleteDocument(botId, filename, storage) {
+    if (storage) {
+      await storage.deleteKBDocument(botId, filename);
+    } else {
+      const fs = await import('fs');
+      const path = await import('path');
+      const targetPath = path.join(this.kbDir, filename);
+      if (fs.existsSync(targetPath)) {
+        fs.unlinkSync(targetPath);
+      } else {
+        return false;
+      }
     }
-    return false;
+
+    this.documents = this.documents.filter(d => d.filename !== filename);
+    this.chunks = this.chunks.filter(c => c.source !== filename);
+    
+    // Rebuild catalog
+    this.catalog = [];
+    this.documents.forEach(doc => {
+      if (doc.ext === '.json') {
+        try {
+          const parsed = JSON.parse(doc.rawContent);
+          if (Array.isArray(parsed)) {
+            this.catalog.push(...parsed);
+          }
+        } catch(e) {}
+      }
+    });
+
+    return true;
   }
 }
 
@@ -233,21 +325,15 @@ const kbRegistry = new Map();
 /**
  * Get or instantiate KnowledgeBase for a specific botId
  */
-export function getKnowledgeBase(botId = 'default', baseDir = process.cwd()) {
+export async function getKnowledgeBase(botId = 'default', storage = null, baseDir = null) {
   const cleanId = botId || 'default';
+  
   if (kbRegistry.has(cleanId)) {
-    return kbRegistry.get(cleanId);
+    return await kbRegistry.get(cleanId);
   }
 
-  let kbDir = path.join(baseDir, 'member', 'kb');
-  if (cleanId !== 'default') {
-    kbDir = path.join(baseDir, 'member', 'bots', cleanId, 'kb');
-  }
-
-  const instance = new KnowledgeBase(kbDir);
-  kbRegistry.set(cleanId, instance);
-  return instance;
+  const kbPromise = KnowledgeBase.create(cleanId, storage, baseDir);
+  kbRegistry.set(cleanId, kbPromise);
+  
+  return await kbPromise;
 }
-
-export const kb = getKnowledgeBase('default');
-

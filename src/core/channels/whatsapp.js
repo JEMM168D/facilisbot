@@ -1,4 +1,7 @@
-import { botEngine } from '../engine.js';
+/**
+ * WhatsApp Cloud API (Meta Official) and Twilio Ingress & Sender
+ * Engine is passed via config._engine by the Worker/Server router.
+ */
 
 /**
  * WhatsApp Cloud API (Meta Official) and Twilio Ingress & Sender
@@ -53,7 +56,10 @@ export class WhatsAppHandler {
       }
 
       // Process message through core bot engine
-      const response = await botEngine.processMessage({
+      const engine = config._engine;
+      if (!engine) return { status: 500, error: 'Engine no disponible' };
+
+      const response = await engine.processMessage({
         channel: 'whatsapp',
         userId: fromNumber,
         userName,
@@ -112,7 +118,10 @@ export class WhatsAppHandler {
     const body = formData.Body || '';
     const profileName = formData.ProfileName || from;
 
-    const response = await botEngine.processMessage({
+    const engine = config._engine;
+    if (!engine) return { status: 500, headers: { 'Content-Type': 'text/plain' }, body: 'Engine no disponible' };
+
+    const response = await engine.processMessage({
       channel: 'whatsapp',
       userId: from,
       userName: profileName,

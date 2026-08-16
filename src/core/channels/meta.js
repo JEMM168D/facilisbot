@@ -1,4 +1,7 @@
-import { botEngine } from '../engine.js';
+/**
+ * Meta Instagram Direct Messages and Facebook Messenger Ingress
+ * Engine is passed via config._engine by the Worker/Server router.
+ */
 
 /**
  * Meta Instagram Direct Messages and Facebook Messenger Ingress
@@ -42,7 +45,10 @@ export class MetaDMsHandler {
         : (config.channels?.messenger?.accessToken || config.channels?.instagram?.accessToken);
 
       // Process with Bot Engine
-      const response = await botEngine.processMessage({
+      const engine = config._engine;
+      if (!engine) return { status: 500, error: 'Engine no disponible' };
+
+      const response = await engine.processMessage({
         channel,
         userId: senderId,
         userName: `${channel}_${senderId.slice(-4)}`,

@@ -1,15 +1,32 @@
 name = "facilisbot"
 main = "src/worker.js"
 compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
 
-# Variables de entorno públicas
+# Static assets (admin panel + widget) served automatically
+[assets]
+directory = "./src/public"
+
+# D1 Database binding
+[[d1_databases]]
+binding = "DB"
+database_name = "facilisbot-db"
+database_id = "LOCAL"  # Replace with actual ID after: npx wrangler d1 create facilisbot-db
+
+# KV Namespace for knowledge base documents
+[[kv_namespaces]]
+binding = "KV"
+id = "LOCAL"  # Replace with actual ID after: npx wrangler kv namespace create KV
+
+# Public environment variables
 [vars]
 BOT_NAME = "Asistente Virtual"
-BOT_NICHE = "barberia"
 
-# Secretos (configurados en Cloudflare Dashboard o con `wrangler secret put <NOMBRE>`):
+# Secrets (set via `npx wrangler secret put <NAME>`):
 # - GEMINI_API_KEY
 # - ANTHROPIC_API_KEY
 # - OPENAI_API_KEY
+# - GROK_API_KEY
 # - TELEGRAM_BOT_TOKEN
 # - WHATSAPP_ACCESS_TOKEN
+# - ADMIN_MASTER_PASSWORD

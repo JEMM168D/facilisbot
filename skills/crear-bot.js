@@ -108,7 +108,7 @@ export async function createBotConversational(options = {}) {
   });
 
   // 3. Create bot instance folder and config
-  const instance = createBotInstance(botId, botConfig);
+  const instance = await createBotInstance(botId, botConfig);
 
   // 4. Generate Knowledge Base Markdown Files
   // Copy template KB if available, or generate tailored files
@@ -155,11 +155,9 @@ Sí, en cualquier momento puedes solicitar hablar con una persona de nuestro equ
 `;
   fs.writeFileSync(path.join(instance.kbDir, 'faq.md'), faqMd, 'utf8');
 
-  // 5. Reload Knowledge Base and instantiate engine
-  const kbInstance = getKnowledgeBase(botId);
-  kbInstance.reload();
-
-  const engine = getBotEngine(botId);
+  // 5. Instantiate Knowledge Base and engine
+  await getKnowledgeBase(botId);
+  const engine = await getBotEngine(botId);
 
   // 6. Run automated verification simulation
   console.log(`\x1b[38;5;220m[Prueba de Simulación Automática]\x1b[0m`);

@@ -9,7 +9,22 @@
 </head>
 <body>
 
-<div class="app-container">
+<!-- Login Overlay -->
+<div id="loginOverlay" style="display:flex; position:fixed; inset:0; z-index:9999; background:var(--bg-primary, #0a0a0f); align-items:center; justify-content:center;">
+  <div style="background:var(--bg-card, #12121a); border:1px solid var(--border-color, #1e1e2e); border-radius:20px; padding:48px 40px; max-width:400px; width:90%; text-align:center;">
+    <div style="font-size:56px; margin-bottom:16px;">⚡</div>
+    <h1 style="font-size:24px; margin-bottom:4px; color:var(--text-main, #f0f0f5);">FacilisBot</h1>
+    <p style="color:var(--text-muted, #6b6b80); font-size:14px; margin-bottom:32px;">Panel de Administración</p>
+    <div style="margin-bottom:16px;">
+      <input type="password" id="loginAccessCode" class="form-control" placeholder="Código de acceso" style="text-align:center; font-size:16px; padding:14px;" onkeydown="if(event.key==='Enter') attemptLogin()">
+    </div>
+    <div id="loginError" style="color:#ff4444; font-size:13px; margin-bottom:12px; display:none;"></div>
+    <button class="btn btn-primary" onclick="attemptLogin()" style="width:100%; padding:14px; font-size:15px;">Entrar</button>
+    <p style="color:var(--text-dim, #3a3a4a); font-size:11px; margin-top:24px;">Motor de chatbots inteligentes con IA</p>
+  </div>
+</div>
+
+<div class="app-container" id="appContainer" style="display:none;">
   <!-- Sidebar Navigation -->
   <aside class="sidebar">
     <div class="brand">
@@ -416,6 +431,10 @@
           <div class="form-group">
             <label>API Key del Proveedor:</label>
             <input type="password" id="cfgLlmApiKey" class="form-control" placeholder="Pega tu API Key de Gemini, Claude, OpenAI o Grok...">
+            <div style="display:flex; gap:8px; margin-top:6px;">
+              <button class="btn btn-secondary btn-sm" onclick="testApiConnection()" id="btnTestConnection">🔌 Probar Conexión</button>
+              <span id="apiKeyTestResult" style="font-size:12px; line-height:32px;"></span>
+            </div>
           </div>
           <div class="form-group">
             <label>Tono de Comunicación:</label>

@@ -1,31 +1,18 @@
+import { createStorageAdapter } from './storage/storage-adapter.js';
 import { loadConfig } from './config.js';
-import { db } from './storage/db.js';
-import { getKnowledgeBase, kb as defaultKb } from './knowledge/search.js';
+import { getKnowledgeBase } from './knowledge/search.js';
 import { UniversalLlmEngine } from './llm/index.js';
 
 /**
  * Main Conversation Engine for FacilisBot (Multi-Tenant)
  */
 export class BotEngine {
-  constructor(configOrBotId = null) {
-    if (typeof configOrBotId === 'string') {
-      this.botId = configOrBotId;
-      this.config = loadConfig(this.botId);
-    } else {
-      this.config = configOrBotId || loadConfig();
-      this.botId = this.config.bot?.id || 'default';
-    }
-
-    this.kb = getKnowledgeBase(this.botId);
-    this.llm = new UniversalLlmEngine(this.config);
-  }
-
-  updateConfig(newConfig) {
-    this.config = newConfig;
+  constructor(config, storage, kb) {
+    this.config = config;
+    this.storage = storage || createStorageAdapter(null);
+    this.kb = kb;
     this.botId = this.config.bot?.id || 'default';
-    this.kb = getKnowledgeBase(this.botId);
-    this.llm = new UniversalLlmEngine(this.config);
-    this.kb.reload();
+    this.llm = new UniversalLlmEngine(this.config, this.storage);
   }
 
   /**
@@ -47,10 +34,10 @@ export class BotEngine {
     }
 
     // 1. Get or create conversation with botId context
-    const conversation = db.getOrCreateConversation(channel, userId, userName, this.botId);
+    const conversation = await this.storage.getOrCreateConversation(channel, userId, userName, this.botId);
 
     // 2. Save incoming user message
-    db.addMessage({
+    await this.storage.addMessage({
       conversationId: conversation.id,
       role: 'user',
       content: text.trim()
@@ -75,7 +62,7 @@ export class BotEngine {
     const systemPrompt = this.buildSystemPrompt();
 
     // 6. Retrieve recent message history
-    const rawHistory = db.getMessages(conversation.id, 12);
+    const rawHistory = await this.storage.getMessages(conversation.id, 12);
     const messages = rawHistory.map(m => ({
       role: m.role,
       content: m.content
@@ -92,14 +79,16 @@ export class BotEngine {
         channel,
         userId,
         userName: conversation.userName,
-        config: this.config
+        config: this.config,
+        storage: this.storage,
+        kb: this.kb
       }
     });
 
     const replyText = llmResponse.content || this.config.bot?.fallbackMessage || '¿En qué más te puedo ayudar?';
 
     // 8. Save assistant response
-    db.addMessage({
+    await this.storage.addMessage({
       conversationId: conversation.id,
       role: 'assistant',
       content: replyText,
@@ -149,6 +138,21 @@ DIRECTRICES Y REGLAS DE RESPUESTA:
 5. Si el cliente pide expresamente hablar con un humano o presenta una queja que no puedes resolver, utiliza "escalate_to_human" con empatía.
 6. Guía la conversación hacia el cierre de citas, pedidos o resolución de dudas según el giro del negocio.`;
   }
+
+  static async create(botIdOrConfig, storage = null) {
+    const actualStorage = storage || createStorageAdapter(null);
+    let config;
+    let botId;
+    if (typeof botIdOrConfig === 'string') {
+      botId = botIdOrConfig;
+      config = await loadConfig(botId, actualStorage);
+    } else {
+      config = botIdOrConfig;
+      botId = config.bot?.id || 'default';
+    }
+    const kb = await getKnowledgeBase(botId, actualStorage);
+    return new BotEngine(config, actualStorage, kb);
+  }
 }
 
 const engineRegistry = new Map();
@@ -156,14 +160,18 @@ const engineRegistry = new Map();
 /**
  * Get or instantiate BotEngine for a specific botId
  */
-export function getBotEngine(botId = 'default') {
+export async function getBotEngine(botId = 'default', storage) {
   const cleanId = botId || 'default';
   if (engineRegistry.has(cleanId)) {
     return engineRegistry.get(cleanId);
   }
-  const engine = new BotEngine(cleanId);
-  engineRegistry.set(cleanId, engine);
-  return engine;
+  const enginePromise = BotEngine.create(cleanId, storage);
+  engineRegistry.set(cleanId, enginePromise);
+  
+  try {
+    return await enginePromise;
+  } catch (err) {
+    engineRegistry.delete(cleanId);
+    throw err;
+  }
 }
-
-export const botEngine = getBotEngine('default');
