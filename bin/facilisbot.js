@@ -98,7 +98,7 @@ async function runInit() {
   let bizName = flags.negocio || flags.business || 'Mi Negocio';
   let botName = flags.nombre || flags.name || 'Asistente Virtual';
   let provider = flags.cerebro || flags.provider || 'gemini';
-  let model = flags.modelo || flags.model || (provider === 'gemini' ? 'gemini-3.5-flash-lite' : 'gpt-4o-mini');
+  let model = flags.modelo || flags.model || (provider === 'gemini' ? 'gemini-3.5-flash-lite' : 'gpt-5.6-luna');
   let hours = flags.horario || 'Lunes a Viernes 9:00 AM - 6:00 PM';
   let location = flags.ubicacion || 'Atención en línea y presencial';
   let phone = flags.telefono || flags.phone || '+1 555-0100';
@@ -134,16 +134,16 @@ async function runInit() {
 
     console.log(`\n${colors.cyan}Elige el Cerebro de IA:${colors.reset}`);
     console.log(`  1. ${colors.bright}Google Gemini 3.5 Flash Lite${colors.reset} (gemini-3.5-flash-lite) - ${colors.green}Ultrarrápido, económico y preciso (Recomendado)${colors.reset}`);
-    console.log(`  2. ${colors.bright}Anthropic Claude${colors.reset} (claude-3-5-haiku / claude-3-7-sonnet)`);
-    console.log(`  3. ${colors.bright}OpenAI${colors.reset} (gpt-4o / gpt-4o-mini)`);
-    console.log(`  4. ${colors.bright}xAI Grok${colors.reset} (grok-2)`);
+    console.log(`  2. ${colors.bright}Anthropic Claude${colors.reset} (claude-sonnet-5 / claude-opus-5)`);
+    console.log(`  3. ${colors.bright}OpenAI${colors.reset} (gpt-5.6-luna / gpt-5.6-terra / gpt-5.6-sol)`);
+    console.log(`  4. ${colors.bright}xAI Grok${colors.reset} (grok-4.6)`);
     console.log(`  5. ${colors.bright}Simulador Offline${colors.reset} (Para pruebas sin API Key)`);
 
     const provChoice = await ask(`\n${colors.cyan}?${colors.reset} Proveedor [1]: `);
     const provNum = provChoice.trim();
-    if (provNum === '2') { provider = 'anthropic'; model = 'claude-3-5-haiku-20241022'; }
-    else if (provNum === '3') { provider = 'openai'; model = 'gpt-4o-mini'; }
-    else if (provNum === '4') { provider = 'grok'; model = 'grok-2'; }
+    if (provNum === '2') { provider = 'anthropic'; model = 'claude-sonnet-5'; }
+    else if (provNum === '3') { provider = 'openai'; model = 'gpt-5.6-luna'; }
+    else if (provNum === '4') { provider = 'grok'; model = 'grok-4.6'; }
     else if (provNum === '5') { provider = 'mock'; model = 'simulator'; }
     else { provider = 'gemini'; model = 'gemini-3.5-flash-lite'; }
 

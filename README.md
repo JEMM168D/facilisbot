@@ -7,7 +7,7 @@ Construido desde cero como una alternativa completa y evolucionada a Forja. Es 1
 
 ## ✨ Características Principales
 
-- **🧠 Soporte Multi-LLM Universal:** Conecta **Google Gemini 3.5 Flash Lite** (`gemini-3.5-flash-lite`), **Anthropic Claude** (Claude 3.7 Sonnet / 3.5 Haiku), **OpenAI** (GPT-4o / GPT-4o-mini), **xAI Grok**, **Ollama / DeepSeek Local**, o usa el **Simulador Offline** integrado para pruebas sin costo de API keys.
+- **🧠 Soporte Multi-LLM Universal:** Conecta **Google Gemini 3.5 Flash Lite** (`gemini-3.5-flash-lite` / `gemini-3.7-flash`), **Anthropic Claude** (Claude Sonnet 5 / Opus 5), **OpenAI** (GPT-5.6 Luna / Terra / Sol), **xAI Grok** (Grok 4.6), **Ollama / DeepSeek-V4 Local**, o usa el **Simulador Offline** integrado para pruebas sin costo de API keys.
 - **📱 Multicanal Real:** Soporta **WhatsApp** (Cloud API directa de Meta + Twilio), **Telegram** (BotFather con modo Webhook y modo Polling local), **Instagram DMs**, **Facebook Messenger** y un **Widget Web flotante embebible** para cualquier sitio.
 - **📊 Panel de Administración Moderno (`/admin`):**
   - **Métricas y KPIs en vivo:** Conversaciones, mensajes 24h, leads capturados, tasa de escalación humana, contador de tokens y estimación de costos en USD.

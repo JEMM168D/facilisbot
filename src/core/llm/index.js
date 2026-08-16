@@ -19,7 +19,13 @@ export class UniversalLlmEngine {
     conversationContext = {}
   }) {
     const provider = (this.config.llm?.provider || 'gemini').toLowerCase();
-    const model = this.config.llm?.model || (provider === 'gemini' ? 'gemini-3.5-flash-lite' : provider === 'anthropic' ? 'claude-3-5-haiku-20241022' : 'gpt-4o-mini');
+    const model = this.config.llm?.model || (
+      provider === 'gemini' ? 'gemini-3.5-flash-lite' :
+      provider === 'anthropic' ? 'claude-sonnet-5' :
+      provider === 'grok' ? 'grok-4.6' :
+      provider === 'ollama' ? 'deepseek-v4-flash' :
+      'gpt-5.6-luna'
+    );
     const temperature = this.config.llm?.temperature ?? 0.4;
     const maxTokens = this.config.llm?.maxTokens || 1000;
 

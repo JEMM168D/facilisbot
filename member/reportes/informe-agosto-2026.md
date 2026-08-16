@@ -1,7 +1,7 @@
 # 📊 Informe Mensual de Rendimiento · Mi Negocio
 **Período:** AGOSTO 2026  
 **Asistente IA:** Asistente Virtual (barberia)  
-**Generado:** 16/8/2026 1:02:37
+**Generado:** 16/8/2026 13:30:49
 
 ---
 
