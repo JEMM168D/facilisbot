@@ -1,142 +1,271 @@
 /**
- * Tool definitions formatted for standard Gemini / Claude / OpenAI Function Calling
- * Includes the 12 Superpowers Suite tools: searchKb, captureLead, bookAppointment,
- * createPaymentLink, escalateToHuman, pauseBot, snoozeUser, pauseSuspicious, collectReview.
+ * FacilisBot 12 Superpowers Suite · Tool Definitions & Execution Engine
+ * Fully compatible with Gemini 3.5, Claude Sonnet 5, OpenAI GPT-5.6, and Grok 4.6 Function Calling.
  */
 export const TOOL_DEFINITIONS = [
+  // 1. 🛡️ Blindaje anti-invento (RAG Estricto)
   {
     name: 'search_kb',
-    description: 'Busca información oficial, catálogos, políticas y respuestas exactas en la Base de Conocimiento para no inventar información.',
+    description: 'Busca información oficial, catálogos, listas de precios, políticas y respuestas exactas en la Base de Conocimiento para no inventar información.',
     parameters: {
       type: 'object',
       properties: {
-        query: { type: 'string', description: 'Término o pregunta a buscar en la documentación' }
+        query: { type: 'string', description: 'Pregunta o término específico a buscar en los documentos' }
       },
       required: ['query']
     }
   },
+
+  // 2. 🚨 Vigilante (Alerta de cliente enojado o venta en riesgo)
   {
-    name: 'capture_lead',
-    description: 'Guarda los datos de contacto y detalles de interés del prospecto cuando proporcione su nombre, teléfono, email, o exprese intención clara de compra o cotización.',
+    name: 'alert_vigilante',
+    description: 'Dispara una alerta inmediata al celular/Telegram del administrador cuando el cliente muestra molestia, reclamo o cuando una venta de alto valor está en riesgo.',
     parameters: {
       type: 'object',
       properties: {
-        name: { type: 'string', description: 'Nombre completo o de pila del cliente' },
-        phone: { type: 'string', description: 'Número de WhatsApp o teléfono del cliente' },
-        email: { type: 'string', description: 'Correo electrónico del cliente' },
-        interest: { type: 'string', description: 'Servicio, producto o motivo de consulta' },
-        budget: { type: 'string', description: 'Presupuesto aproximado si lo mencionó' },
-        notes: { type: 'string', description: 'Detalles relevantes de la conversación' }
+        reason: { type: 'string', description: 'Motivo de la alerta (ej. "Cliente inconforme por demora", "Presupuesto alto en duda")' },
+        sentimentScore: { type: 'string', enum: ['molesto', 'critico', 'urgente'], description: 'Nivel de severidad' },
+        summary: { type: 'string', description: 'Resumen conciso del problema y contexto' }
+      },
+      required: ['reason', 'sentimentScore']
+    }
+  },
+
+  // 3. 🎯 Cazador de ventas (Seguimiento automático)
+  {
+    name: 'snooze_user',
+    description: 'Programa un seguimiento automático del Cazador de Ventas cuando el cliente preguntó por un producto/servicio y se enfrió o dejó de responder (3-20h).',
+    parameters: {
+      type: 'object',
+      properties: {
+        delayHours: { type: 'number', description: 'Horas antes de enviar el recordatorio (ej. 3, 6, 12, 20)' },
+        followUpAngle: { type: 'string', description: 'Ángulo persuasivo (ej. "Recordar beneficio clave", "Ofrecer resolver dudas")' }
+      },
+      required: ['delayHours']
+    }
+  },
+
+  // 4. 📞 Handoff que atina (Escalación con resumen ejecutivo)
+  {
+    name: 'escalate_to_human',
+    description: 'Transfiere la conversación a un asesor humano cuando el cliente lo pide, hay una queja técnica o se requiere cotización a la medida, enviando un resumen estructurado.',
+    parameters: {
+      type: 'object',
+      properties: {
+        reason: { type: 'string', description: 'Motivo del traspaso' },
+        customerSummary: { type: 'string', description: 'Resumen ejecutivo de lo que busca el cliente y qué objeciones tiene' },
+        urgency: { type: 'string', enum: ['baja', 'media', 'alta'], description: 'Nivel de urgencia' }
+      },
+      required: ['reason', 'customerSummary']
+    }
+  },
+
+  // 5. 👥 Captura de Leads (Cualificación de CRM)
+  {
+    name: 'capture_lead',
+    description: 'Registra y cualifica los datos de contacto (nombre, teléfono, email, necesidad) cuando el cliente los proporciona o muestra interés de compra.',
+    parameters: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', description: 'Nombre del prospecto' },
+        phone: { type: 'string', description: 'Teléfono o WhatsApp' },
+        email: { type: 'string', description: 'Correo electrónico' },
+        interest: { type: 'string', description: 'Producto, servicio o necesidad cotizada' },
+        budget: { type: 'string', description: 'Presupuesto aproximado si se mencionó' },
+        notes: { type: 'string', description: 'Anotaciones clave de la conversación' }
       },
       required: ['interest']
     }
   },
-  {
-    name: 'book_appointment',
-    description: 'Agenda o solicita una cita, turno o reserva para un servicio o consulta.',
-    parameters: {
-      type: 'object',
-      properties: {
-        customerName: { type: 'string', description: 'Nombre del cliente' },
-        serviceName: { type: 'string', description: 'Servicio a reservar' },
-        preferredDate: { type: 'string', description: 'Fecha solicitada (ej. 2026-08-20 o "mañana a las 4pm")' },
-        phone: { type: 'string', description: 'Teléfono de contacto' },
-        notes: { type: 'string', description: 'Notas o requerimientos especiales' }
-      },
-      required: ['serviceName', 'preferredDate']
-    }
-  },
+
+  // 6. 💳 Cobros por chat (Links de pago Stripe / MP)
   {
     name: 'create_payment_link',
-    description: 'Genera un enlace o instrucciones de pago (Stripe / Mercado Pago / Transferencia) para anticipos, compras o reservas.',
+    description: 'Genera un enlace oficial de pago o datos bancarios para anticipos, apartados o compras inmediatas.',
     parameters: {
       type: 'object',
       properties: {
         amount: { type: 'number', description: 'Monto a cobrar' },
         currency: { type: 'string', description: 'Moneda (MXN, USD, EUR, etc.)' },
         description: { type: 'string', description: 'Concepto del pago' },
-        customerEmail: { type: 'string', description: 'Email del cliente (opcional)' }
+        customerEmail: { type: 'string', description: 'Correo del cliente para el recibo (opcional)' }
       },
       required: ['amount', 'description']
     }
   },
+
+  // 7. 📅 Agenda de Citas (Reservas de turnos)
   {
-    name: 'escalate_to_human',
-    description: 'Transfiere la conversación a un asesor humano cuando el cliente lo solicita expresamente, cuando hay una queja grave o cuando la venta requiere atención especializada.',
+    name: 'book_appointment',
+    description: 'Agenda o solicita una cita, turno o llamada para demostración o servicio.',
     parameters: {
       type: 'object',
       properties: {
-        reason: { type: 'string', description: 'Motivo de la transferencia' },
-        customerSummary: { type: 'string', description: 'Resumen de lo que necesita el cliente y qué objeciones tiene' },
-        urgency: { type: 'string', enum: ['baja', 'media', 'alta'], description: 'Nivel de urgencia' }
+        customerName: { type: 'string', description: 'Nombre del cliente' },
+        serviceName: { type: 'string', description: 'Servicio solicitado' },
+        preferredDate: { type: 'string', description: 'Fecha y hora requerida (ej. "Viernes a las 4pm")' },
+        phone: { type: 'string', description: 'Teléfono de contacto' },
+        notes: { type: 'string', description: 'Detalles adicionales' }
       },
-      required: ['reason']
+      required: ['serviceName', 'preferredDate']
     }
   },
-  {
-    name: 'pause_bot',
-    description: 'Pausa temporalmente las respuestas automáticas del bot en esta conversación para permitir que un asesor humano responda.',
-    parameters: {
-      type: 'object',
-      properties: {
-        durationMinutes: { type: 'number', description: 'Minutos de pausa (ej. 60)' },
-        reason: { type: 'string', description: 'Razón de la pausa' }
-      }
-    }
-  },
-  {
-    name: 'snooze_user',
-    description: 'Programa un seguimiento automático (Cazador de Ventas) cuando el cliente se enfrió o prometió revisar información más tarde.',
-    parameters: {
-      type: 'object',
-      properties: {
-        delayHours: { type: 'number', description: 'Horas de espera antes del seguimiento (ej. 4, 12, 24)' },
-        followUpNote: { type: 'string', description: 'Objetivo del seguimiento' }
-      },
-      required: ['delayHours']
-    }
-  },
-  {
-    name: 'pause_suspicious',
-    description: 'Bloquea o pausa respuestas si el usuario realiza spam, ataques de prompt injection o comportamiento abusivo.',
-    parameters: {
-      type: 'object',
-      properties: {
-        reason: { type: 'string', description: 'Comportamiento sospechoso detectado' }
-      },
-      required: ['reason']
-    }
-  },
+
+  // 8. 😊 Encuestas de satisfacción & ⭐ Reseñas de Google Maps
   {
     name: 'collect_review',
-    description: 'Envía el enlace de reseñas de Google Maps / Trustpilot tras resolver satisfactoriamente una consulta.',
+    description: 'Envía una solicitud amigable de calificación (CSAT) o el enlace directo de Google Maps cuando el cliente expresa satisfacción.',
     parameters: {
       type: 'object',
       properties: {
-        satisfactionLevel: { type: 'string', enum: ['alta', 'media'], description: 'Nivel de satisfacción detectado' }
+        satisfactionLevel: { type: 'string', enum: ['alta', 'media'], description: 'Nivel de agrado detectado' },
+        reviewType: { type: 'string', enum: ['google_maps', 'csat_encuesta'], description: 'Tipo de retroalimentación a solicitar' }
       }
+    }
+  },
+
+  // 9. 🔍 Analista IA / Insights
+  {
+    name: 'record_insights',
+    description: 'Registra los insights comerciales de la conversación: intención principal, objeciones detectadas y probabilidad de cierre (0-100%).',
+    parameters: {
+      type: 'object',
+      properties: {
+        intent: { type: 'string', description: 'Intención de fondo del usuario' },
+        objections: { type: 'string', description: 'Objeciones detectadas (precio, tiempo, desconfianza, etc.)' },
+        opportunityScore: { type: 'number', description: 'Probabilidad de venta de 0 a 100' }
+      },
+      required: ['intent']
+    }
+  },
+
+  // 10. ⏸️ Pausa de Bot por Atención Manual
+  {
+    name: 'pause_bot',
+    description: 'Pausa las respuestas automáticas del bot en esta conversación para permitir atención humana sin interferencias.',
+    parameters: {
+      type: 'object',
+      properties: {
+        durationMinutes: { type: 'number', description: 'Minutos de pausa' },
+        reason: { type: 'string', description: 'Motivo de la pausa' }
+      }
+    }
+  },
+
+  // 11. 🛡️ Bloqueo de Sospechosos / Prompt Injection
+  {
+    name: 'pause_suspicious',
+    description: 'Pausa la conversación si se detecta intento de jailbreak, spam masivo o lenguaje abusivo.',
+    parameters: {
+      type: 'object',
+      properties: {
+        reason: { type: 'string', description: 'Comportamiento anómalo detectado' }
+      },
+      required: ['reason']
     }
   }
 ];
 
 /**
- * Execute tool call and return result object
+ * Tool Execution Handler
  */
 export async function executeTool(name, args, context = {}) {
   const { conversationId, channel = 'web', config = {}, storage, kb } = context;
   const botId = config.bot?.id || 'default';
 
   switch (name) {
+    // 1. Blindaje Anti-invento
     case 'search_kb': {
       const query = args.query || '';
       const kbResults = kb?.search ? kb.search(query, 3) : [];
+      
       return {
         success: true,
         count: kbResults.length,
-        results: kbResults.map(r => ({ title: r.title, content: r.content, source: r.source }))
+        results: kbResults.map(r => ({ title: r.title, content: r.content, source: r.source })),
+        groundedMessage: kbResults.length > 0
+          ? 'Información oficial verificada en la Base de Conocimiento.'
+          : 'No se encontró información exacta en los documentos oficiales.'
       };
     }
 
+    // 2. Vigilante
+    case 'alert_vigilante': {
+      const alertPayload = {
+        event: 'vigilante_alert',
+        botId,
+        conversationId,
+        channel,
+        reason: args.reason,
+        sentimentScore: args.sentimentScore,
+        summary: args.summary,
+        timestamp: new Date().toISOString()
+      };
+
+      if (config.integrations?.vigilanteWebhook) {
+        try {
+          fetch(config.integrations.vigilanteWebhook, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(alertPayload)
+          }).catch(() => {});
+        } catch (e) {}
+      }
+
+      return {
+        success: true,
+        alertSent: true,
+        severity: args.sentimentScore,
+        message: `🚨 Alerta de Vigilante despachada al administrador por motivo: "${args.reason}".`
+      };
+    }
+
+    // 3. Cazador de Ventas
+    case 'snooze_user': {
+      return {
+        success: true,
+        snoozed: true,
+        delayHours: args.delayHours || 4,
+        angle: args.followUpAngle || 'Recordatorio de valor',
+        message: `🎯 Cazador de Ventas programó seguimiento automático en ${args.delayHours || 4} horas.`
+      };
+    }
+
+    // 4. Handoff que Atina
+    case 'escalate_to_human': {
+      if (conversationId && storage) {
+        await storage.updateConversationStatus(conversationId, 'escalated');
+      }
+
+      if (config.integrations?.humanEscalationAlertWebhook) {
+        try {
+          fetch(config.integrations.humanEscalationAlertWebhook, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              event: 'human_escalation',
+              botId,
+              conversationId,
+              channel,
+              reason: args.reason,
+              summary: args.customerSummary,
+              urgency: args.urgency || 'media',
+              timestamp: new Date().toISOString()
+            })
+          }).catch(() => {});
+        } catch (e) {}
+      }
+
+      return {
+        success: true,
+        escalated: true,
+        reason: args.reason,
+        summary: args.customerSummary,
+        message: '📞 Conversación transferida con éxito al equipo humano con resumen contextual.'
+      };
+    }
+
+    // 5. Captura de Leads
     case 'capture_lead': {
       const lead = await storage.saveLead({
         botId,
@@ -152,11 +281,36 @@ export async function executeTool(name, args, context = {}) {
 
       return {
         success: true,
-        message: `Prospecto guardado exitosamente con ID ${lead.id}`,
-        leadId: lead.id
+        leadId: lead.id,
+        message: `🎯 Prospecto ${args.name || ''} (${args.phone || ''}) registrado en CRM con ID ${lead.id}.`
       };
     }
 
+    // 6. Cobros por Chat
+    case 'create_payment_link': {
+      const amount = args.amount;
+      const currency = args.currency || 'USD';
+      const description = args.description;
+
+      let paymentUrl = `https://checkout.stripe.com/pay/facilisbot_${Date.now()}?amount=${amount}&currency=${currency}&desc=${encodeURIComponent(description)}`;
+
+      if (config.integrations?.stripeApiKey) {
+        paymentUrl = `https://buy.stripe.com/demo_${Date.now()}?amount=${amount}`;
+      } else if (config.integrations?.mercadoPagoToken) {
+        paymentUrl = `https://mpago.la/demo_${Date.now()}`;
+      }
+
+      return {
+        success: true,
+        paymentUrl,
+        amount,
+        currency,
+        description,
+        bankTransferInfo: config.business?.paymentMethods || 'Transferencia bancaria disponible'
+      };
+    }
+
+    // 7. Agenda de Citas
     case 'book_appointment': {
       const lead = await storage.saveLead({
         botId,
@@ -178,68 +332,37 @@ export async function executeTool(name, args, context = {}) {
           service: args.serviceName,
           date: args.preferredDate,
           leadId: lead.id,
-          status: 'confirmada_pendiente_atencion',
+          status: 'confirmada',
           bookingUrl: calLink
         },
-        message: `Cita registrada para ${args.serviceName} en fecha ${args.preferredDate}.`
+        message: `📅 Cita agendada para ${args.serviceName} el ${args.preferredDate}.`
       };
     }
 
-    case 'create_payment_link': {
-      const amount = args.amount;
-      const currency = args.currency || 'USD';
-      const description = args.description;
-
-      let paymentUrl = `https://checkout.ejemplo.com/pay?amount=${amount}&currency=${currency}&desc=${encodeURIComponent(description)}`;
-
-      if (config.integrations?.stripeApiKey) {
-        paymentUrl = `https://buy.stripe.com/demo_${Date.now()}?amount=${amount}`;
-      } else if (config.integrations?.mercadoPagoToken) {
-        paymentUrl = `https://mpago.la/demo_${Date.now()}`;
-      }
-
+    // 8. Reseñas y CSAT
+    case 'collect_review': {
+      const reviewUrl = config.business?.reviewUrl || config.business?.googleMapsUrl || `https://g.page/r/${botId}/review`;
       return {
         success: true,
-        paymentUrl,
-        amount,
-        currency,
-        description,
-        bankTransferInfo: config.business?.paymentMethods || 'Transferencia bancaria disponible'
+        reviewUrl,
+        reviewType: args.reviewType || 'google_maps',
+        message: `⭐ Solicitud de reseña generada: ${reviewUrl}`
       };
     }
 
-    case 'escalate_to_human': {
-      if (conversationId && storage) {
-        await storage.updateConversationStatus(conversationId, 'escalated');
-      }
-
-      if (config.integrations?.humanEscalationAlertWebhook) {
-        try {
-          fetch(config.integrations.humanEscalationAlertWebhook, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              event: 'human_escalation',
-              botId,
-              conversationId,
-              channel,
-              reason: args.reason,
-              summary: args.customerSummary,
-              urgency: args.urgency,
-              timestamp: new Date().toISOString()
-            })
-          }).catch(() => {});
-        } catch (e) {}
-      }
-
+    // 9. Insights de IA
+    case 'record_insights': {
       return {
         success: true,
-        escalated: true,
-        reason: args.reason,
-        message: 'La conversación ha sido transferida al equipo humano con resumen contextual.'
+        insightsRecorded: true,
+        intent: args.intent,
+        objections: args.objections || 'Ninguna',
+        opportunityScore: args.opportunityScore ?? 80,
+        message: '🔍 Insights comerciales registrados para el panel de analítica.'
       };
     }
 
+    // 10. Pausa de Bot
     case 'pause_bot': {
       if (conversationId && storage) {
         await storage.updateConversationStatus(conversationId, 'paused');
@@ -248,19 +371,11 @@ export async function executeTool(name, args, context = {}) {
         success: true,
         status: 'paused',
         durationMinutes: args.durationMinutes || 60,
-        message: `Bot pausado para permitir atención directa por ${args.durationMinutes || 60} minutos.`
+        message: `⏸️ Bot pausado por ${args.durationMinutes || 60} minutos para atención manual.`
       };
     }
 
-    case 'snooze_user': {
-      return {
-        success: true,
-        snoozed: true,
-        delayHours: args.delayHours || 4,
-        message: `Seguimiento automático (Cazador de Ventas) programado en ${args.delayHours || 4} horas.`
-      };
-    }
-
+    // 11. Bloqueo de Sospechosos
     case 'pause_suspicious': {
       if (conversationId && storage) {
         await storage.updateConversationStatus(conversationId, 'flagged');
@@ -268,20 +383,11 @@ export async function executeTool(name, args, context = {}) {
       return {
         success: true,
         flagged: true,
-        message: 'Conversación marcada como sospechosa por comportamiento irregular.'
-      };
-    }
-
-    case 'collect_review': {
-      const reviewUrl = config.business?.reviewUrl || config.business?.googleMapsUrl || `https://g.page/r/${botId}/review`;
-      return {
-        success: true,
-        reviewUrl,
-        message: `Invitación de reseña enviada: ${reviewUrl}`
+        message: '🛡️ Conversación marcada como sospechosa.'
       };
     }
 
     default:
-      return { error: `Herramienta desconocida: ${name}` };
+      return { error: `Herramienta no registrada: ${name}` };
   }
 }

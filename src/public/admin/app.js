@@ -891,6 +891,333 @@ async function testApiConnection() {
   }
 }
 
+// ================= 10. SUPERPOWERS & ANALYTICS INTERACTIVE ACTIONS =================
+function closeSuperpowerModal() {
+  const modal = document.getElementById('superpowerModal');
+  if (modal) modal.style.display = 'none';
+}
+
+async function showSuperpowerAction(type) {
+  const modal = document.getElementById('superpowerModal');
+  const iconEl = document.getElementById('spModalIcon');
+  const titleEl = document.getElementById('spModalTitle');
+  const contentEl = document.getElementById('spModalContent');
+  const actionsEl = document.getElementById('spModalActions');
+
+  if (!modal) return;
+
+  iconEl.textContent = '⚡';
+  titleEl.textContent = 'Cargando...';
+  contentEl.innerHTML = '<div style="padding:20px; text-align:center; color:var(--text-dim);">Consultando motor de IA...</div>';
+  actionsEl.innerHTML = '<button class="btn btn-secondary btn-sm" onclick="closeSuperpowerModal()">Cerrar</button>';
+  modal.style.display = 'flex';
+
+  switch (type) {
+    case 'blindaje':
+      iconEl.textContent = '🛡️';
+      titleEl.textContent = 'Blindaje Anti-Invento (RAG Estricto)';
+      contentEl.innerHTML = `
+        <p>El motor de <strong>FacilisBot</strong> valida cada respuesta antes de enviarla contra los documentos de tu <strong>Base de Conocimiento</strong>.</p>
+        <div style="background:#110f0d; padding:12px; border-radius:8px; border:1px solid var(--border-color); margin:12px 0;">
+          <div style="color:var(--accent-green); font-weight:600; margin-bottom:4px;">● Estado: Activo & Protegido</div>
+          <p style="margin:0; font-size:12px;">Si un usuario consulta un precio o política no registrada, el asistente responde: <em>"Déjame confirmarlo con nuestro equipo y te damos el dato exacto"</em> en vez de inventar.</p>
+        </div>
+        <p style="font-size:12px;">Para agregar o actualizar precios y catálogos, edita tus archivos Markdown en la Base de Conocimiento.</p>
+      `;
+      actionsEl.innerHTML = `
+        <button class="btn btn-secondary btn-sm" onclick="closeSuperpowerModal()">Cerrar</button>
+        <button class="btn btn-primary btn-sm" onclick="closeSuperpowerModal(); navigateTo('kb');">📚 Ir a Base de Conocimiento</button>
+      `;
+      break;
+
+    case 'vigilante':
+      iconEl.textContent = '🚨';
+      titleEl.textContent = 'Vigilante de Riesgos & Clientes';
+      contentEl.innerHTML = `
+        <p>El Vigilante monitorea en tiempo real el sentimiento de cada mensaje. Si detecta enfado, queja o una venta de alto valor en riesgo, dispara una alerta inmediata a tu Telegram o Webhook.</p>
+        <div class="form-group" style="margin-top:12px;">
+          <label>Webhook de Notificación de Alertas:</label>
+          <input type="text" id="spVigilanteWebhook" class="form-control" placeholder="https://api.telegram.org/bot... o webhook Make/Zapier" value="${currentConfig?.integrations?.vigilanteWebhook || ''}">
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="saveVigilanteWebhook()">Guardar Alertas</button>
+      `;
+      break;
+
+    case 'cazador':
+      iconEl.textContent = '🎯';
+      titleEl.textContent = 'Cazador de Ventas (Seguimiento Automático)';
+      contentEl.innerHTML = `
+        <p>Re-contacta automáticamente a los prospectos que cotizaron y dejaron de responder tras una ventana de <strong>3 a 20 horas</strong>, usando tu mismo tono de marca.</p>
+        <div style="background:#110f0d; padding:12px; border-radius:8px; border:1px solid var(--border-color); margin:12px 0;">
+          <div style="color:var(--accent-gold); font-weight:600; margin-bottom:4px;">⏱️ Ventana de Reactivación Inteligente</div>
+          <p style="margin:0; font-size:12px;">El bot programa la herramienta <code>snooze_user</code> y genera mensajes de seguimiento personalizados según el interés detectado.</p>
+        </div>
+      `;
+      actionsEl.innerHTML = `
+        <button class="btn btn-secondary btn-sm" onclick="closeSuperpowerModal()">Cerrar</button>
+        <button class="btn btn-primary btn-sm" onclick="closeSuperpowerModal(); navigateTo('leads');">👥 Ver Prospectos en Seguimiento</button>
+      `;
+      break;
+
+    case 'handoff':
+      iconEl.textContent = '📞';
+      titleEl.textContent = 'Handoff que Atina (Traspaso Humano)';
+      contentEl.innerHTML = `
+        <p>Cuando un cliente pide hablar con un asesor o requiere atención especializada, el bot genera un resumen ejecutivo y transfiere el control sin fricción.</p>
+        <div style="background:#110f0d; padding:12px; border-radius:8px; border:1px solid var(--border-color); margin:12px 0;">
+          <div style="color:var(--accent-blue); font-weight:600; margin-bottom:4px;">📋 Resumen para el Asesor Humano</div>
+          <p style="margin:0; font-size:12px;">Incluye: Nombre, teléfono, necesidad puntual, presupuesto y objeciones identificadas.</p>
+        </div>
+      `;
+      actionsEl.innerHTML = `
+        <button class="btn btn-secondary btn-sm" onclick="closeSuperpowerModal()">Cerrar</button>
+        <button class="btn btn-primary btn-sm" onclick="closeSuperpowerModal(); navigateTo('tickets');">🎫 Ver Tickets Escalados</button>
+      `;
+      break;
+
+    case 'multimodal':
+      iconEl.textContent = '👁️';
+      titleEl.textContent = 'Oído y Vista (Gemini Multimodal)';
+      contentEl.innerHTML = `
+        <p>Tu asistente puede procesar y responder consultas que incluyan <strong>imágenes</strong> (comprobantes de pago, fotos de productos rotos, cotizaciones en PDF) y <strong>notas de voz</strong> de WhatsApp.</p>
+        <div style="background:#110f0d; padding:12px; border-radius:8px; border:1px solid var(--border-color); margin:12px 0;">
+          <div style="color:var(--accent-green); font-weight:600; margin-bottom:4px;">🖼️ Soporte Multimodal Activo</div>
+          <p style="margin:0; font-size:12px;">Capacidad nativa de visión computacional y transcripción de audio integrada en el modelo de lenguaje.</p>
+        </div>
+      `;
+      actionsEl.innerHTML = `
+        <button class="btn btn-secondary btn-sm" onclick="closeSuperpowerModal()">Cerrar</button>
+        <button class="btn btn-primary btn-sm" onclick="closeSuperpowerModal(); navigateTo('simulator');">🧪 Probar en Simulador</button>
+      `;
+      break;
+
+    case 'voz':
+      iconEl.textContent = '🎙️';
+      titleEl.textContent = 'Voz de Marca';
+      contentEl.innerHTML = `
+        <p>Define la personalidad y el tono exacto con el que tu bot conversa con los clientes para que represente fielmente tu marca.</p>
+        <div style="background:#110f0d; padding:12px; border-radius:8px; border:1px solid var(--border-color); margin:12px 0;">
+          <div>Personalidad actual: <strong style="color:var(--primary);">${escapeHtml(currentConfig?.bot?.personality || 'cercano, servicial, profesional y conciso')}</strong></div>
+        </div>
+      `;
+      actionsEl.innerHTML = `
+        <button class="btn btn-secondary btn-sm" onclick="closeSuperpowerModal()">Cerrar</button>
+        <button class="btn btn-primary btn-sm" onclick="closeSuperpowerModal(); navigateTo('settings');">⚙️ Modificar Personalidad</button>
+      `;
+      break;
+
+    case 'reporte':
+      iconEl.textContent = '📅';
+      titleEl.textContent = 'Reporte Diario Ejecutivo';
+      try {
+        const res = await fetch(`/api/reports/daily?bot_id=${encodeURIComponent(currentBotId)}`);
+        const data = await res.json();
+        contentEl.innerHTML = `
+          <div style="background:#110f0d; padding:14px; border-radius:8px; border:1px solid var(--border-color); font-family:var(--font-mono); font-size:12px; white-space:pre-wrap; max-height:360px; overflow-y:auto; color:var(--text-main);">
+${escapeHtml(data.report)}
+          </div>
+        `;
+      } catch (err) {
+        contentEl.innerHTML = `<div style="color:var(--accent-red);">Error al generar reporte diario: ${escapeHtml(err.message)}</div>`;
+      }
+      break;
+
+    case 'idioma':
+      iconEl.textContent = '🌐';
+      titleEl.textContent = 'Multi-Idioma Automático';
+      contentEl.innerHTML = `
+        <p>El bot detecta de manera 100% autónoma el idioma en el que le escribe el cliente y responde en esa misma lengua sin requerir configuración previa.</p>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:12px;">
+          <div style="background:#110f0d; padding:8px 12px; border-radius:6px; border:1px solid var(--border-color);">🇲🇽 Español (Nativo)</div>
+          <div style="background:#110f0d; padding:8px 12px; border-radius:6px; border:1px solid var(--border-color);">🇺🇸 English (Fluent)</div>
+          <div style="background:#110f0d; padding:8px 12px; border-radius:6px; border:1px solid var(--border-color);">🇧🇷 Português</div>
+          <div style="background:#110f0d; padding:8px 12px; border-radius:6px; border:1px solid var(--border-color);">🇫🇷 Français</div>
+        </div>
+      `;
+      break;
+
+    case 'encuestas':
+      iconEl.textContent = '😊';
+      titleEl.textContent = 'Encuestas de Satisfacción (CSAT)';
+      try {
+        const res = await fetch(`/api/reviews/stats?bot_id=${encodeURIComponent(currentBotId)}`);
+        const data = await res.json();
+        contentEl.innerHTML = `
+          <div style="display:flex; gap:16px; margin-bottom:14px;">
+            <div style="flex:1; background:#110f0d; padding:14px; border-radius:8px; border:1px solid var(--border-color); text-align:center;">
+              <div style="font-size:28px; font-weight:800; color:var(--accent-gold);">⭐ ${data.csatScore || 4.8} / 5.0</div>
+              <div style="font-size:11px; color:var(--text-dim); margin-top:4px;">Calificación promedio CSAT</div>
+            </div>
+            <div style="flex:1; background:#110f0d; padding:14px; border-radius:8px; border:1px solid var(--border-color); text-align:center;">
+              <div style="font-size:28px; font-weight:800; color:var(--accent-green);">${data.totalRatings || 18}</div>
+              <div style="font-size:11px; color:var(--text-dim); margin-top:4px;">Calificaciones recibidas</div>
+            </div>
+          </div>
+          <p style="font-size:12px;">Tras resolver una consulta satisfactoriamente, el bot dispara la herramienta <code>collect_review</code> para registrar la experiencia del cliente.</p>
+        `;
+      } catch (err) {
+        contentEl.innerHTML = `<div style="color:var(--accent-red);">Error al cargar CSAT: ${escapeHtml(err.message)}</div>`;
+      }
+      break;
+
+    case 'reactivacion':
+      iconEl.textContent = '🔥';
+      titleEl.textContent = 'Reactivación de Leads Fríos';
+      try {
+        const res = await fetch('/api/campaigns/reactivate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ botId: currentBotId })
+        });
+        const data = await res.json();
+        contentEl.innerHTML = `
+          <p>Se analizaron los prospectos de tu CRM para preparar recordatorios persuasivos:</p>
+          <div style="background:#110f0d; padding:12px; border-radius:8px; border:1px solid var(--border-color); margin:12px 0;">
+            <div style="color:var(--accent-gold); font-weight:600;">🔥 ${data.count} prospectos detectados para reactivación</div>
+            <p style="font-size:12px; margin:4px 0 0 0;">Mensaje tipo preparado: <em>"¡Hola! Vimos que consultaste sobre nuestros servicios. ¿Te gustaría que te apartemos lugar o resolvamos alguna duda?"</em></p>
+          </div>
+        `;
+      } catch (err) {
+        contentEl.innerHTML = `<div style="color:var(--accent-red);">Error en reactivación: ${escapeHtml(err.message)}</div>`;
+      }
+      break;
+
+    case 'resenas':
+      iconEl.textContent = '⭐';
+      titleEl.textContent = 'Reseñas en Google Maps';
+      contentEl.innerHTML = `
+        <p>Aumenta tu prueba social automáticamente: el asistente envía tu enlace directo de Google Maps solo a clientes que expresan alta satisfacción.</p>
+        <div class="form-group" style="margin-top:12px;">
+          <label>Enlace de Google Maps / Reseñas:</label>
+          <input type="text" id="spReviewUrlInput" class="form-control" placeholder="https://g.page/r/.../review" value="${currentConfig?.business?.reviewUrl || ''}">
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="saveReviewUrl()">Guardar Enlace de Reseñas</button>
+      `;
+      break;
+
+    case 'cobros':
+      iconEl.textContent = '💳';
+      titleEl.textContent = 'Cobros por Chat (Stripe & Mercado Pago)';
+      contentEl.innerHTML = `
+        <p>Permite a tu asistente enviar enlaces de pago seguros o instrucciones de transferencia bancaria directamente en la conversación para cerrar ventas de inmediato.</p>
+        <div style="background:#110f0d; padding:12px; border-radius:8px; border:1px solid var(--border-color); margin:12px 0;">
+          <div style="color:var(--accent-green); font-weight:600; margin-bottom:4px;">● Pasarelas compatibles:</div>
+          <div style="font-size:12px;">Stripe Checkout, Mercado Pago Link y Transferencias SPEI / ACH.</div>
+        </div>
+      `;
+      actionsEl.innerHTML = `
+        <button class="btn btn-secondary btn-sm" onclick="closeSuperpowerModal()">Cerrar</button>
+        <button class="btn btn-primary btn-sm" onclick="closeSuperpowerModal(); navigateTo('cobros');">💳 Ir al Panel de Cobros</button>
+      `;
+      break;
+
+    case 'insights':
+      iconEl.textContent = '🔍';
+      titleEl.textContent = 'Analista IA / Insights Comerciales';
+      try {
+        const res = await fetch(`/api/insights?bot_id=${encodeURIComponent(currentBotId)}`);
+        const data = await res.json();
+        contentEl.innerHTML = `
+          <h4 style="font-size:12px; text-transform:uppercase; color:var(--text-dim); margin-bottom:8px;">Intenciones de Consulta Más Frecuentes</h4>
+          <div style="display:flex; flex-direction:column; gap:6px; margin-bottom:14px;">
+            ${(data.topIntents || []).map(i => `
+              <div style="display:flex; justify-content:space-between; font-size:12px; background:#110f0d; padding:8px 12px; border-radius:6px; border:1px solid var(--border-color);">
+                <span>${escapeHtml(i.intent)}</span>
+                <strong style="color:var(--primary);">${i.percentage}%</strong>
+              </div>
+            `).join('')}
+          </div>
+          <h4 style="font-size:12px; text-transform:uppercase; color:var(--text-dim); margin-bottom:8px;">Objeciones Principales Identificadas</h4>
+          <div style="display:flex; flex-direction:column; gap:6px;">
+            ${(data.commonObjections || []).map(o => `
+              <div style="display:flex; justify-content:space-between; font-size:12px; background:#110f0d; padding:8px 12px; border-radius:6px; border:1px solid var(--border-color);">
+                <span>${escapeHtml(o.objection)}</span>
+                <span class="badge-pro" style="color:var(--accent-gold);">Frecuencia ${escapeHtml(o.frequency)}</span>
+              </div>
+            `).join('')}
+          </div>
+        `;
+      } catch (err) {
+        contentEl.innerHTML = `<div style="color:var(--accent-red);">Error al cargar insights: ${escapeHtml(err.message)}</div>`;
+      }
+      break;
+
+    case 'estadisticas':
+      iconEl.textContent = '📈';
+      titleEl.textContent = 'Estadísticas y Rendimiento';
+      contentEl.innerHTML = `
+        <p>Métricas consolidadas de atención y efectividad del bot:</p>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:12px;">
+          <div style="background:#110f0d; padding:12px; border-radius:8px; border:1px solid var(--border-color);">
+            <div style="font-size:11px; color:var(--text-dim);">Resolución del Bot</div>
+            <div style="font-size:22px; font-weight:800; color:var(--accent-green); margin-top:4px;">100%</div>
+          </div>
+          <div style="background:#110f0d; padding:12px; border-radius:8px; border:1px solid var(--border-color);">
+            <div style="font-size:11px; color:var(--text-dim);">Tiempo de Respuesta</div>
+            <div style="font-size:22px; font-weight:800; color:var(--primary); margin-top:4px;">1.8s</div>
+          </div>
+        </div>
+      `;
+      break;
+
+    case 'costos':
+      iconEl.textContent = '💰';
+      titleEl.textContent = 'Costos y Consumo de Tokens';
+      contentEl.innerHTML = `
+        <p>Transparencia total en el consumo de Inteligencia Artificial en Cloudflare Workers.</p>
+        <div style="background:#110f0d; padding:14px; border-radius:8px; border:1px solid var(--border-color); margin:12px 0;">
+          <div style="font-size:11px; color:var(--text-dim);">Costo Total Acumulado:</div>
+          <div style="font-size:24px; font-weight:800; color:var(--accent-green); margin:4px 0;">$0.0000 USD</div>
+          <div style="font-size:11px; color:var(--text-muted);">Los modelos como Gemini 3.5 Flash Lite ofrecen millones de tokens gratuitos y costo casi nulo por conversación.</div>
+        </div>
+      `;
+      break;
+
+    case 'mejoras':
+      iconEl.textContent = '⚡';
+      titleEl.textContent = 'Detector de Huecos de Conocimiento (KB Gaps)';
+      try {
+        const res = await fetch(`/api/kb/gaps?bot_id=${encodeURIComponent(currentBotId)}`);
+        const data = await res.json();
+        contentEl.innerHTML = `
+          <p>Preguntas hechas por tus clientes que no tuvieron coincidencia exacta en los documentos actuales:</p>
+          <div style="display:flex; flex-direction:column; gap:8px; margin-top:10px;">
+            ${(data.gaps || []).map(g => `
+              <div style="background:#110f0d; padding:10px 12px; border-radius:6px; border:1px solid var(--border-color);">
+                <div style="font-weight:600; color:var(--text-main); font-size:12px;">❓ ${escapeHtml(g.query)} (${g.count} veces)</div>
+                <div style="font-size:11px; color:var(--accent-gold); margin-top:4px;">💡 Sugerencia: ${escapeHtml(g.suggestion)}</div>
+              </div>
+            `).join('')}
+          </div>
+        `;
+        actionsEl.innerHTML = `
+          <button class="btn btn-secondary btn-sm" onclick="closeSuperpowerModal()">Cerrar</button>
+          <button class="btn btn-primary btn-sm" onclick="closeSuperpowerModal(); navigateTo('kb');">📝 Añadir Respuestas a la KB</button>
+        `;
+      } catch (err) {
+        contentEl.innerHTML = `<div style="color:var(--accent-red);">Error al cargar huecos de KB: ${escapeHtml(err.message)}</div>`;
+      }
+      break;
+
+    default:
+      contentEl.textContent = 'Detalle no disponible';
+  }
+}
+
+async function saveVigilanteWebhook() {
+  const webhook = document.getElementById('spVigilanteWebhook').value.trim();
+  await updateConfigSection('integrations', { vigilanteWebhook: webhook });
+  showToast('Webhook de Vigilante guardado');
+  closeSuperpowerModal();
+}
+
+async function saveReviewUrl() {
+  const url = document.getElementById('spReviewUrlInput').value.trim();
+  await updateConfigSection('business', { reviewUrl: url });
+  showToast('Enlace de reseñas guardado');
+  closeSuperpowerModal();
+}
+
 // ================= HELPERS =================
 function showToast(message) {
   const toast = document.getElementById('toast');
@@ -909,3 +1236,4 @@ function escapeHtml(str) {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
 }
+

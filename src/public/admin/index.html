@@ -244,7 +244,7 @@
         </div>
         <div class="superpowers-grid">
           <!-- 1. Blindaje Anti-Invento -->
-          <div class="superpower-card">
+          <div class="superpower-card" onclick="showSuperpowerAction('blindaje')" style="cursor:pointer;">
             <div class="superpower-header">
               <div class="superpower-icon">🛡️</div>
               <div class="superpower-title">Blindaje anti-invento</div>
@@ -253,7 +253,7 @@
           </div>
 
           <!-- 2. Vigilante -->
-          <div class="superpower-card">
+          <div class="superpower-card" onclick="showSuperpowerAction('vigilante')" style="cursor:pointer;">
             <div class="superpower-header">
               <div class="superpower-icon">🚨</div>
               <div class="superpower-title">Vigilante</div>
@@ -262,7 +262,7 @@
           </div>
 
           <!-- 3. Cazador de Ventas -->
-          <div class="superpower-card">
+          <div class="superpower-card" onclick="showSuperpowerAction('cazador')" style="cursor:pointer;">
             <div class="superpower-header">
               <div class="superpower-icon">🎯</div>
               <div class="superpower-title">Cazador de ventas</div>
@@ -271,7 +271,7 @@
           </div>
 
           <!-- 4. Handoff que Atina -->
-          <div class="superpower-card">
+          <div class="superpower-card" onclick="showSuperpowerAction('handoff')" style="cursor:pointer;">
             <div class="superpower-header">
               <div class="superpower-icon">📞</div>
               <div class="superpower-title">Handoff que atina</div>
@@ -280,7 +280,7 @@
           </div>
 
           <!-- 5. Oído y Vista (Multimodal) -->
-          <div class="superpower-card">
+          <div class="superpower-card" onclick="showSuperpowerAction('multimodal')" style="cursor:pointer;">
             <div class="superpower-header">
               <div class="superpower-icon">👁️</div>
               <div class="superpower-title">Oído y vista</div>
@@ -289,7 +289,7 @@
           </div>
 
           <!-- 6. Voz de Marca -->
-          <div class="superpower-card">
+          <div class="superpower-card" onclick="showSuperpowerAction('voz')" style="cursor:pointer;">
             <div class="superpower-header">
               <div class="superpower-icon">🎙️</div>
               <div class="superpower-title">Voz de marca</div>
@@ -298,7 +298,7 @@
           </div>
 
           <!-- 7. Reporte Diario -->
-          <div class="superpower-card">
+          <div class="superpower-card" onclick="showSuperpowerAction('reporte')" style="cursor:pointer;">
             <div class="superpower-header">
               <div class="superpower-icon">📅</div>
               <div class="superpower-title">Reporte diario</div>
@@ -307,7 +307,7 @@
           </div>
 
           <!-- 8. Multi-Idioma -->
-          <div class="superpower-card">
+          <div class="superpower-card" onclick="showSuperpowerAction('idioma')" style="cursor:pointer;">
             <div class="superpower-header">
               <div class="superpower-icon">🌐</div>
               <div class="superpower-title">Multi-idioma</div>
@@ -316,7 +316,7 @@
           </div>
 
           <!-- 9. Encuestas de Satisfacción -->
-          <div class="superpower-card">
+          <div class="superpower-card" onclick="showSuperpowerAction('encuestas')" style="cursor:pointer;">
             <div class="superpower-header">
               <div class="superpower-icon">😊</div>
               <div class="superpower-title">Encuestas de satisfacción</div>
@@ -325,7 +325,7 @@
           </div>
 
           <!-- 10. Reactivación de Leads Fríos -->
-          <div class="superpower-card">
+          <div class="superpower-card" onclick="showSuperpowerAction('reactivacion')" style="cursor:pointer;">
             <div class="superpower-header">
               <div class="superpower-icon">🔥</div>
               <div class="superpower-title">Reactivación de leads fríos</div>
@@ -334,7 +334,7 @@
           </div>
 
           <!-- 11. Reseñas -->
-          <div class="superpower-card">
+          <div class="superpower-card" onclick="showSuperpowerAction('resenas')" style="cursor:pointer;">
             <div class="superpower-header">
               <div class="superpower-icon">⭐</div>
               <div class="superpower-title">Reseñas</div>
@@ -342,8 +342,8 @@
             <div class="superpower-desc">Le pide reseña en Google Maps a los clientes contentos con tu link directo — más prueba social sola.</div>
           </div>
 
-          <!-- 12. Cobros por WhatsApp -->
-          <div class="superpower-card">
+          <!-- 12. Cobros por Chat -->
+          <div class="superpower-card" onclick="showSuperpowerAction('cobros')" style="cursor:pointer;">
             <div class="superpower-header">
               <div class="superpower-icon">💳</div>
               <div class="superpower-title">Cobros por chat</div>
@@ -359,7 +359,7 @@
           PANEL DE ANÁLISIS
         </div>
         <div class="superpowers-grid">
-          <div class="superpower-card" onclick="navigateTo('inbox')">
+          <div class="superpower-card" onclick="showSuperpowerAction('insights')" style="cursor:pointer;">
             <div class="superpower-header">
               <div class="superpower-icon" style="color:var(--accent-gold);">🔍</div>
               <div class="superpower-title">Analista IA / Insights</div>
@@ -367,7 +367,7 @@
             <div class="superpower-desc">Resumen de cada conversación: qué querían, objeciones y oportunidad de venta detectada.</div>
           </div>
 
-          <div class="superpower-card">
+          <div class="superpower-card" onclick="showSuperpowerAction('estadisticas')" style="cursor:pointer;">
             <div class="superpower-header">
               <div class="superpower-icon" style="color:var(--accent-green);">📈</div>
               <div class="superpower-title">Estadísticas</div>
@@ -375,7 +375,7 @@
             <div class="superpower-desc" id="resumenStatsConvs">Volumen: 0 conversaciones, resolución del 100%.</div>
           </div>
 
-          <div class="superpower-card">
+          <div class="superpower-card" onclick="showSuperpowerAction('costos')" style="cursor:pointer;">
             <div class="superpower-header">
               <div class="superpower-icon" style="color:var(--primary);">💰</div>
               <div class="superpower-title">Costos</div>
@@ -383,7 +383,7 @@
             <div class="superpower-desc" id="resumenCostosDesc">Gasto estimado en IA: $0.0000 USD (0 tokens).</div>
           </div>
 
-          <div class="superpower-card" onclick="navigateTo('kb')">
+          <div class="superpower-card" onclick="showSuperpowerAction('mejoras')" style="cursor:pointer;">
             <div class="superpower-header">
               <div class="superpower-icon" style="color:var(--accent-blue);">⚡</div>
               <div class="superpower-title">Mejoras</div>
@@ -885,6 +885,23 @@
     <div style="display:flex; gap:10px; margin-top:14px;">
       <button class="btn btn-secondary" onclick="closeCreateBotModal()" style="flex:1;">Cancelar</button>
       <button class="btn btn-primary" onclick="submitCreateBot()" style="flex:1;">Crear Bot</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Detalle y Acción de Superpoder / Analítica -->
+<div id="superpowerModal" class="login-overlay" style="display:none; background: rgba(0,0,0,0.85); z-index: 9999;">
+  <div class="login-card" style="width: 520px; max-width: 90vw; max-height: 85vh; overflow-y: auto; text-align: left;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px;">
+      <div style="display:flex; align-items:center; gap:8px;">
+        <span id="spModalIcon" style="font-size:22px;">⚡</span>
+        <h3 id="spModalTitle" style="color:var(--text-main); font-size:16px; font-weight:700;">Superpoder</h3>
+      </div>
+      <button onclick="closeSuperpowerModal()" style="background:transparent; border:none; color:var(--text-dim); font-size:20px; cursor:pointer;">✕</button>
+    </div>
+    <div id="spModalContent" style="font-size:13px; line-height:1.6; color:var(--text-muted); margin-bottom:16px;"></div>
+    <div id="spModalActions" style="display:flex; justify-content:flex-end; gap:8px;">
+      <button class="btn btn-secondary btn-sm" onclick="closeSuperpowerModal()">Cerrar</button>
     </div>
   </div>
 </div>

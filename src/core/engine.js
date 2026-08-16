@@ -102,7 +102,7 @@ export class BotEngine {
       botId: this.botId,
       status: conversation.status,
       leadId: conversation.leadId,
-      tools: llmResponse.executedTools || null,
+      tools: llmResponse.tools || llmResponse.executedTools || null,
       tokensUsed: llmResponse.tokensUsed,
       provider: llmResponse.provider,
       model: llmResponse.model
