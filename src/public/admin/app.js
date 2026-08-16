@@ -1,4 +1,4 @@
-// Yunque Bots Administrative Dashboard Client
+// FacilisBot Administrative Dashboard Client
 let currentConfig = null;
 let activeConversationId = null;
 let allLeads = [];
@@ -40,7 +40,7 @@ async function loadOverview() {
     const res = await fetch('/api/overview');
     const data = await res.json();
 
-    document.getElementById('sidebarBotName').textContent = data.bot?.name || 'Yunque Bot';
+    document.getElementById('sidebarBotName').textContent = data.bot?.name || 'FacilisBot';
     document.getElementById('sidebarNiche').textContent = data.bot?.niche || 'starter';
 
     const m = data.metrics || {};
@@ -395,7 +395,7 @@ function setupWidgetSnippet() {
   const origin = window.location.origin;
   document.getElementById('waWebhookUrl').value = `${origin}/webhook/whatsapp`;
 
-  const snippet = `<!-- Yunque Web Chat Widget -->\n<script src="${origin}/widget/widget.js" data-bot-id="default" async></script>`;
+  const snippet = `<!-- FacilisBot Web Chat Widget -->\n<script src="${origin}/widget/widget.js" data-bot-id="default" async></script>`;
   document.getElementById('widgetSnippet').value = snippet;
 }
 

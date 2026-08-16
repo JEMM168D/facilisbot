@@ -1,11 +1,11 @@
 version: '3.8'
 
 services:
-  yunque-bot:
+  facilisbot:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: yunque-chatbot
+    container_name: facilisbot
     restart: unless-stopped
     ports:
       - "3000:3000"

@@ -27,7 +27,7 @@ function assert(condition, message) {
 
 async function runTests() {
   console.log('\n\x1b[38;5;208m==================================================\x1b[0m');
-  console.log('\x1b[1m⚡ SUITE DE PRUEBAS DE INTEGRACIÓN · YUNQUE BOTS\x1b[0m');
+  console.log('\x1b[1m⚡ SUITE DE PRUEBAS DE INTEGRACIÓN · FACILISBOT\x1b[0m');
   console.log('\x1b[38;5;208m==================================================\x1b[0m\n');
 
   // Test 1: Config
@@ -181,7 +181,7 @@ async function runTests() {
   console.log('\n\x1b[38;5;208m==================================================\x1b[0m');
   if (failed === 0) {
     console.log(`\x1b[32m\x1b[1m🎉 TODAS LAS PRUEBAS PASARON EXITOSAMENTE (${passed}/${passed})\x1b[0m`);
-    console.log('\x1b[38;5;220mEl sistema Yunque Bots está 100% verificado y listo para producción.\x1b[0m');
+    console.log('\x1b[38;5;220mEl sistema FacilisBot está 100% verificado y listo para producción.\x1b[0m');
   } else {
     console.error(`\x1b[31m\x1b[1m❌ PRUEBAS COMPLETADAS CON ERRORES (${passed} pasadas, ${failed} fallidas)\x1b[0m`);
   }

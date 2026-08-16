@@ -1,25 +1,28 @@
 {
-  "name": "yunque-bots",
+  "name": "facilisbot",
   "version": "1.0.0",
   "type": "module",
-  "description": "Plataforma autónoma, auto-hospedada y altamente personalizable de Chatbots de IA multicanal para empresas",
+  "description": "FacilisBot - Plataforma autónoma, auto-hospedada y altamente personalizable de Chatbots de IA multicanal para empresas con Gemini 3.5 Flash Lite",
   "main": "src/server/index.js",
   "bin": {
-    "yunque": "bin/yunque.js",
-    "forjabot": "bin/yunque.js"
+    "facilisbot": "bin/facilisbot.js",
+    "facilis": "bin/facilisbot.js",
+    "yunque": "bin/facilisbot.js",
+    "forjabot": "bin/facilisbot.js"
   },
   "scripts": {
-    "dev": "node bin/yunque.js serve",
+    "dev": "node bin/facilisbot.js serve",
     "start": "node src/server/index.js",
-    "init": "node bin/yunque.js init",
-    "doctor": "node bin/yunque.js doctor",
-    "list": "node bin/yunque.js list",
-    "backup": "node bin/yunque.js backup",
-    "update": "node bin/yunque.js update",
+    "init": "node bin/facilisbot.js init",
+    "doctor": "node bin/facilisbot.js doctor",
+    "list": "node bin/facilisbot.js list",
+    "backup": "node bin/facilisbot.js backup",
+    "update": "node bin/facilisbot.js update",
     "deploy": "npx wrangler deploy src/worker.js",
     "test": "node test/verify.js"
   },
   "keywords": [
+    "facilisbot",
     "chatbot",
     "ai",
     "whatsapp",
@@ -31,7 +34,7 @@
     "claude",
     "openai"
   ],
-  "author": "Yunque Bots",
+  "author": "FacilisBot",
   "license": "MIT",
   "engines": {
     "node": ">=18.0.0"

@@ -1,5 +1,5 @@
-# ⚡ Yunque Bots (Forja OS)
-> **Plataforma autónoma, abierta y altamente personalizable para crear, operar y revender Chatbots de IA multicanal.**
+# ⚡ FacilisBot
+> **Plataforma autónoma, abierta y altamente personalizable para crear, operar y revender Chatbots de IA multicanal con Gemini 3.5 Flash Lite.**
 
 Construido desde cero como una alternativa completa y evolucionada a Forja. Es 100% de código abierto, auto-hospedado (Cloudflare Workers, VPS o Node.js), sin suscripciones forzosas y con control total sobre tus datos, prompts y modelos de IA.
 
@@ -39,14 +39,14 @@ Construido desde cero como una alternativa completa y evolucionada a Forja. Es 1
 ### 1. Iniciar el Asistente Interactivo
 ```bash
 npm run init
-# o directamente: node bin/yunque.js init
+# o directamente: node bin/facilisbot.js init
 ```
 El asistente te preguntará el nombre de tu empresa, el giro de negocio (ej. `barberia`, `restaurante`, `inmobiliaria`), el tono y el proveedor de IA.
 
 ### 2. Iniciar el Servidor y Panel de Control
 ```bash
 npm run dev
-# o directamente: node bin/yunque.js serve
+# o directamente: node bin/facilisbot.js serve
 ```
 Abre en tu navegador:
 - 📊 **Panel Administrativo:** [http://localhost:3000/admin](http://localhost:3000/admin)
@@ -55,7 +55,7 @@ Abre en tu navegador:
 ### 3. Diagnóstico de Salud
 ```bash
 npm run doctor
-# o directamente: node bin/yunque.js doctor
+# o directamente: node bin/facilisbot.js doctor
 ```
 
 ---
@@ -80,17 +80,18 @@ Agrega una sola línea antes de cerrar `</body>` en tu HTML:
 
 ---
 
-## 🛠️ Comandos del CLI
+## 🛠️ Comandos del CLI FacilisBot
 
 | Comando | Descripción |
 |---|---|
-| `yunque init` | Asistente de configuración guiada (soporta flags no interactivas: `--yes --giro restaurante`). |
-| `yunque list` | Catálogo de los 15 giros de negocio disponibles. |
-| `yunque install <slug>` | Instala directamente una plantilla de negocio (ej. `yunque install barberia`). |
-| `yunque doctor` | Chequeo profundo de salud de archivos, base de conocimiento y canales. |
-| `yunque serve` | Inicia el servidor HTTP, el panel `/admin` y los webhooks. |
-| `yunque update` | Actualiza el motor manteniendo a salvo tu configuración y base de conocimiento. |
-| `yunque deploy` | Instrucciones de despliegue a Cloudflare Workers o VPS. |
+| `facilisbot init` | Asistente de configuración guiada (soporta flags no interactivas: `--yes --giro restaurante`). |
+| `facilisbot list` | Catálogo de los 15 giros de negocio disponibles. |
+| `facilisbot install <slug>` | Instala directamente una plantilla de negocio (ej. `facilisbot install barberia`). |
+| `facilisbot doctor` | Chequeo profundo de salud de archivos, base de conocimiento y canales. |
+| `facilisbot serve` | Inicia el servidor HTTP, el panel `/admin` y los webhooks. |
+| `facilisbot backup` | Crea un respaldo seguro de la base de conocimiento y base de datos. |
+| `facilisbot update` | Actualiza el motor manteniendo a salvo tu configuración y base de conocimiento. |
+| `facilisbot deploy` | Instrucciones de despliegue a Cloudflare Workers o VPS. |
 
 ---
 

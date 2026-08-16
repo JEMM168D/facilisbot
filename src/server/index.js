@@ -311,7 +311,7 @@ export function createServer(customConfig = null) {
 
         server.listen(p, () => {
           console.log(`\n=================================================`);
-          console.log(`🚀 Yunque Bots Server corriendo en:`);
+          console.log(`🚀 FacilisBot Server corriendo en:`);
           console.log(`👉 Panel de Administración: \x1b[36mhttp://localhost:${p}/admin\x1b[0m`);
           console.log(`👉 Widget de Prueba Web:   \x1b[36mhttp://localhost:${p}/\x1b[0m`);
           console.log(`👉 Webhook WhatsApp:       \x1b[36mhttp://localhost:${p}/webhook/whatsapp\x1b[0m`);
