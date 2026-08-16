@@ -1,0 +1,72 @@
+ID_Mensaje,ID_Conversacion,Canal,Usuario,Rol,Contenido,Fecha
+msg_ca142433,conv_2253024a,web,"Carlos Mendoza",user,"Hola, me gustaría saber precios de sus servicios",2026-08-16T06:38:32.114Z
+msg_e350c266,conv_3c2b2543,web,"Roberto",user,"Hola, ¿a qué hora abren y qué servicios ofrecen?",2026-08-16T06:38:32.158Z
+msg_2d141b2d,conv_3c2b2543,web,"Roberto",assistant,"¡Hola! Te doy la bienvenida a Mi Empresa. Soy Asistente Virtual, tu asistente virtual. ¿En qué te puedo ayudar hoy?",2026-08-16T06:38:32.167Z
+msg_2bef27bf,conv_59a1f304,web,"Visitante Web",user,"Hola desde prueba de integración",2026-08-16T06:38:32.287Z
+msg_2dab6082,conv_59a1f304,web,"Visitante Web",assistant,"¡Hola! Te doy la bienvenida a Mi Empresa. Soy Asistente Virtual, tu asistente virtual. ¿En qué te puedo ayudar hoy?",2026-08-16T06:38:32.292Z
+msg_ae864682,conv_2253024a,web,"Carlos Mendoza",user,"Hola, me gustaría saber precios de sus servicios",2026-08-16T06:38:37.205Z
+msg_5d5537ce,conv_3c2b2543,web,"Roberto",user,"Hola, ¿a qué hora abren y qué servicios ofrecen?",2026-08-16T06:38:37.241Z
+msg_04d60a48,conv_3c2b2543,web,"Roberto",assistant,"¡Hola! Te doy la bienvenida a Mi Empresa. Soy Asistente Virtual, tu asistente virtual. ¿En qué te puedo ayudar hoy?",2026-08-16T06:38:37.253Z
+msg_b4eb6a15,conv_59a1f304,web,"Visitante Web",user,"Hola desde prueba de integración",2026-08-16T06:38:37.368Z
+msg_c87d051f,conv_59a1f304,web,"Visitante Web",assistant,"¡Hola! Te doy la bienvenida a Mi Empresa. Soy Asistente Virtual, tu asistente virtual. ¿En qué te puedo ayudar hoy?",2026-08-16T06:38:37.374Z
+msg_ae27bc95,conv_2253024a,web,"Carlos Mendoza",user,"Hola, me gustaría saber precios de sus servicios",2026-08-16T06:40:03.904Z
+msg_45e747d2,conv_3c2b2543,web,"Roberto",user,"Hola, ¿a qué hora abren y qué servicios ofrecen?",2026-08-16T06:40:03.924Z
+msg_29a83bc5,conv_3c2b2543,web,"Roberto",assistant,"¡Hola! Te doy la bienvenida a Mi Negocio. Soy Asistente Virtual, tu asistente virtual. ¿En qué te puedo ayudar hoy?",2026-08-16T06:40:03.934Z
+msg_98e1ed60,conv_59a1f304,web,"Visitante Web",user,"Hola desde prueba de integración",2026-08-16T06:40:04.048Z
+msg_e581506c,conv_59a1f304,web,"Visitante Web",assistant,"¡Hola! Te doy la bienvenida a Mi Negocio. Soy Asistente Virtual, tu asistente virtual. ¿En qué te puedo ayudar hoy?",2026-08-16T06:40:04.053Z
+msg_f46528b9,conv_2253024a,web,"Carlos Mendoza",user,"Hola, me gustaría saber precios de sus servicios",2026-08-16T06:40:29.908Z
+msg_61916105,conv_3c2b2543,web,"Roberto",user,"Hola, ¿a qué hora abren y qué servicios ofrecen?",2026-08-16T06:40:29.931Z
+msg_9ad76c1a,conv_3c2b2543,web,"Roberto",assistant,"¡Hola! Te doy la bienvenida a Mi Negocio. Soy Asistente Virtual, tu asistente virtual. ¿En qué te puedo ayudar hoy?",2026-08-16T06:40:29.942Z
+msg_463a7c4f,conv_59a1f304,web,"Visitante Web",user,"Hola desde prueba de integración",2026-08-16T06:40:30.071Z
+msg_91823d42,conv_59a1f304,web,"Visitante Web",assistant,"¡Hola! Te doy la bienvenida a Mi Negocio. Soy Asistente Virtual, tu asistente virtual. ¿En qué te puedo ayudar hoy?",2026-08-16T06:40:30.076Z
+msg_1c770a22,conv_2253024a,web,"Carlos Mendoza",user,"Hola, me gustaría saber precios de sus servicios",2026-08-16T06:42:40.944Z
+msg_af1ef72d,conv_3c2b2543,web,"Roberto",user,"Hola, ¿a qué hora abren y qué servicios ofrecen?",2026-08-16T06:42:40.967Z
+msg_2bbadd7e,conv_3c2b2543,web,"Roberto",assistant,"¡Hola! Te doy la bienvenida a Mi Negocio. Soy Asistente Virtual, tu asistente virtual. ¿En qué te puedo ayudar hoy?",2026-08-16T06:42:40.978Z
+msg_a770a80c,conv_59a1f304,web,"Visitante Web",user,"Hola desde prueba de integración",2026-08-16T06:42:41.080Z
+msg_53685f33,conv_59a1f304,web,"Visitante Web",assistant,"¡Hola! Te doy la bienvenida a Mi Negocio. Soy Asistente Virtual, tu asistente virtual. ¿En qué te puedo ayudar hoy?",2026-08-16T06:42:41.085Z
+msg_14b3e5b3,conv_2253024a,web,"Carlos Mendoza",user,"Hola, me gustaría saber precios de sus servicios",2026-08-16T06:45:21.552Z
+msg_9ca1f30b,conv_3c2b2543,web,"Roberto",user,"Hola, ¿a qué hora abren y qué servicios ofrecen?",2026-08-16T06:45:21.576Z
+msg_daf1752b,conv_3c2b2543,web,"Roberto",assistant,"¡Hola! Te doy la bienvenida a Mi Negocio. Soy Asistente Virtual, tu asistente virtual. ¿En qué te puedo ayudar hoy?",2026-08-16T06:45:21.587Z
+msg_236ba751,conv_59a1f304,web,"Visitante Web",user,"Hola desde prueba de integración",2026-08-16T06:45:21.692Z
+msg_d44ec72d,conv_59a1f304,web,"Visitante Web",assistant,"¡Hola! Te doy la bienvenida a Mi Negocio. Soy Asistente Virtual, tu asistente virtual. ¿En qué te puedo ayudar hoy?",2026-08-16T06:45:21.697Z
+msg_3ae636c5,conv_2253024a,web,"Carlos Mendoza",user,"Hola, me gustaría saber precios de sus servicios",2026-08-16T06:48:09.212Z
+msg_36537307,conv_3c2b2543,web,"Roberto",user,"Hola, ¿a qué hora abren y qué servicios ofrecen?",2026-08-16T06:48:09.250Z
+msg_f59a5b44,conv_3c2b2543,web,"Roberto",assistant,"¡Hola! Te doy la bienvenida a Mi Negocio. Soy Asistente Virtual, tu asistente virtual. ¿En qué te puedo ayudar hoy?",2026-08-16T06:48:09.263Z
+msg_6225ef19,conv_59a1f304,web,"Visitante Web",user,"Hola desde prueba de integración",2026-08-16T06:48:09.378Z
+msg_7571a806,conv_59a1f304,web,"Visitante Web",assistant,"¡Hola! Te doy la bienvenida a Mi Negocio. Soy Asistente Virtual, tu asistente virtual. ¿En qué te puedo ayudar hoy?",2026-08-16T06:48:09.383Z
+msg_2d3b5ec2,conv_f11fe33e,web,"Visitante Web",user,"hola, quiero informacion",2026-08-16T06:56:09.370Z
+msg_c0d446a5,conv_f11fe33e,web,"Visitante Web",assistant,"¡Hola! Qué gusto saludarte. Bienvenido a Mi Negocio 💈, tu barbería de confianza. 
+
+Estamos especializados en cortes clásicos, degradados (fade), afeitado con toalla caliente, perfilado de barba y más. 
+
+¿Te interesa algún servicio en específico o te gustaría agendar una cita para consentirte un poco?",2026-08-16T06:56:10.475Z
+msg_cb72c712,conv_f11fe33e,web,"Visitante Web",assistant,"[Asesor Humano]: sisisi",2026-08-16T06:56:31.348Z
+msg_4055cdd2,conv_f11fe33e,web,"Visitante Web",user,"si",2026-08-16T06:56:57.504Z
+msg_4b197681,conv_f11fe33e,web,"Visitante Web",assistant,"[Asesor Humano]: ok",2026-08-16T06:57:07.559Z
+msg_2643ebae,conv_f11fe33e,web,"Visitante Web",user,"ok",2026-08-16T06:57:22.979Z
+msg_eb7b21ec,conv_f11fe33e,web,"Visitante Web",user,"bueno",2026-08-16T06:57:29.879Z
+msg_c5d4f0c4,conv_f11fe33e,web,"Visitante Web",assistant,"[Asesor Humano]: si me escuchas?",2026-08-16T06:57:42.473Z
+msg_fc66b271,conv_f11fe33e,web,"Visitante Web",user,"bueno",2026-08-16T06:57:50.318Z
+msg_2c136123,conv_f11fe33e,web,"Visitante Web",user,"ok",2026-08-16T06:58:09.042Z
+msg_143e7e20,conv_f11fe33e,web,"Visitante Web",assistant,"Gracias por escribir a Mi Negocio. Respecto a ""ok"", con gusto te podemos orientar. ¿Te gustaría agendar una cita o que un asesor te contacte por WhatsApp?",2026-08-16T06:58:09.373Z
+msg_1632a4a6,conv_f11fe33e,web,"Visitante Web",user,"si",2026-08-16T06:58:15.247Z
+msg_72e20405,conv_f11fe33e,web,"Visitante Web",assistant,"Gracias por escribir a Mi Negocio. Respecto a ""si"", con gusto te podemos orientar. ¿Te gustaría agendar una cita o que un asesor te contacte por WhatsApp?",2026-08-16T06:58:15.566Z
+msg_a0e92765,conv_2253024a,web,"Carlos Mendoza",user,"Hola, me gustaría saber precios de sus servicios",2026-08-16T07:02:35.488Z
+msg_bb008be8,conv_3c2b2543,web,"Roberto",user,"Hola, ¿a qué hora abren y qué servicios ofrecen?",2026-08-16T07:02:35.531Z
+msg_1306b023,conv_3c2b2543,web,"Roberto",assistant,"¡Hola! 
+
+Abrimos de **lunes a viernes de 9:00 AM a 6:00 PM** (y también tenemos horario de 8:00 AM a 8:00 PM según nuestros registros generales). 
+
+Nuestros servicios principales son:
+- Corte clásico
+- Fade / Degradado
+- Barba completa con toalla caliente
+- Tinte de barba
+- Paquete Corte + Barba
+- Exfoliación facial
+
+Además, ¡todos nuestros servicios incluyen agua embotellada, café americano o espresso de cortesía! ☕
+
+¿Te gustaría agendar una cita para alguno de estos servicios?",2026-08-16T07:02:36.732Z
+msg_927c172f,conv_59a1f304,web,"Visitante Web",user,"Hola desde prueba de integración",2026-08-16T07:02:36.782Z
+msg_9a3c75bd,conv_59a1f304,web,"Visitante Web",assistant,"¡Hola! Qué gusto saludarte de nuevo. ¿En qué te puedo ayudar hoy? ¿Te gustaría agendar un corte, un arreglo de barba o consultar nuestros servicios?",2026-08-16T07:02:37.397Z

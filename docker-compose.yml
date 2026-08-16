@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  yunque-bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: yunque-chatbot
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    volumes:
+      # Persistent Storage: Preserved forever across updates and rebuilds
+      - ./data:/app/data
+      - ./member:/app/member
+      - ./.env:/app/.env:ro

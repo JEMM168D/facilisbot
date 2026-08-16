@@ -1,0 +1,23 @@
+{
+  "bot": {
+    "name": "CafeBot",
+    "niche": "cafeteria",
+    "language": "es",
+    "personality": "cálido, relajado, apasionado por el café de especialidad",
+    "greeting": "¡Hola! Bienvenido a Café de Origen. ☕ ¿Se te antoja un café de especialidad, ver el menú de desayunos o pedir para recoger?",
+    "fallbackMessage": "¿Buscas ver nuestra barra de café, postres o saber la contraseña del wifi?",
+    "escalationMessage": "Te paso con nuestro barista en barra para cualquier pedido especial."
+  },
+  "business": {
+    "name": "Café de Origen - Barra de Especialidad",
+    "industry": "Cafetería y Tostaduría Artesanal",
+    "description": "Café 100% de origen seleccionado, métodos artesanales de extracción (V60, Chemex, Aeropress), repostería fresca y espacio pet friendly con wifi rápido.",
+    "services": "Bebidas frías y calientes, Desayunos ligeros, Repostería artesanal, Venta de café en grano o molido, Espacio para coworking",
+    "hours": "Lunes a Domingo de 7:30 AM a 9:30 PM.",
+    "location": "Callejón de las Letras 18, Zona Bohemio",
+    "phone": "+1 555-0112",
+    "email": "hola@cafedeorigen.com",
+    "website": "https://cafedeorigen.com",
+    "paymentMethods": "Efectivo, Tarjetas sin contacto, Apple/Google Pay, Transferencia"
+  }
+}

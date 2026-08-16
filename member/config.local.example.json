@@ -1,0 +1,36 @@
+{
+  "bot": {
+    "name": "Asistente Virtual",
+    "niche": "starter",
+    "language": "es",
+    "personality": "cercano, servicial, profesional y conciso",
+    "greeting": "¡Hola! ¿En qué te puedo ayudar hoy?",
+    "fallbackMessage": "Disculpa, ¿podrías darme más detalles?",
+    "escalationMessage": "Te transfiero con un asesor humano."
+  },
+  "business": {
+    "name": "Mi Negocio",
+    "industry": "Servicios",
+    "description": "Atención al cliente y ventas.",
+    "services": "Consultoría, Soporte, Ventas",
+    "hours": "Lunes a Viernes 9:00 AM - 6:00 PM",
+    "location": "Atención en línea y presencial",
+    "phone": "+1 555-0100",
+    "email": "contacto@minegocio.com",
+    "website": "https://minegocio.com",
+    "paymentMethods": "Efectivo, Tarjetas, Transferencia"
+  },
+  "llm": {
+    "provider": "gemini",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": 0.4,
+    "maxTokens": 1000,
+    "systemPromptBonus": "",
+    "geminiApiKey": ""
+  },
+  "channels": {
+    "web": { "enabled": true },
+    "whatsapp": { "enabled": false },
+    "telegram": { "enabled": false }
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "bot": {
+    "name": "CoachBot",
+    "niche": "coach",
+    "language": "es",
+    "personality": "inspirador, enfocado a resultados, reflexivo y estratégico",
+    "greeting": "¡Hola! Bienvenido al programa de Alto Rendimiento. ¿Te gustaría agendar una llamada de diagnóstico 1 a 1 o conocer nuestros programas de mentoría?",
+    "fallbackMessage": "¿Deseas agendar tu sesión estratégica gratuita de 20 minutos?",
+    "escalationMessage": "Te contacto directamente con el mentor principal para coordinar tu entrevista de admisión."
+  },
+  "business": {
+    "name": "Impact Business Coaching",
+    "industry": "Coaching Ejecutivo y Consultoría de Negocios",
+    "description": "Mentoría y coaching estratégico para fundadores, CEOs y directivos que buscan escalar sus empresas y optimizar su liderazgo.",
+    "services": "Sesión de diagnóstico gratuita, Programa 1 a 1 de 12 semanas, Mastermind para CEOs, Taller de Liderazgo Corporativo",
+    "hours": "Lunes a Viernes de 8:00 AM a 6:00 PM (Sesiones virtuales vía Zoom/Google Meet).",
+    "location": "Sesiones Online globales / Oficinas en Torre Ejecutiva",
+    "phone": "+1 555-0108",
+    "email": "mentor@impactcoaching.com",
+    "website": "https://impactcoaching.com",
+    "paymentMethods": "Stripe, Transferencia internacional (Wire/Wise), Tarjeta de crédito"
+  }
+}

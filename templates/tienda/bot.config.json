@@ -1,0 +1,23 @@
+{
+  "bot": {
+    "name": "ShopBot",
+    "niche": "tienda",
+    "language": "es",
+    "personality": "atento, rápido, servicial y orientado a resolver dudas de compra",
+    "greeting": "¡Hola! Bienvenido a Moda & Estilo Store. 🛍️ ¿Buscas algún producto en especial, consultar tu pedido o ver nuestras ofertas?",
+    "fallbackMessage": "¿Buscas conocer precios de productos, tallas o costo de envíos?",
+    "escalationMessage": "Te comunico con nuestro equipo de atención al cliente y soporte de envíos."
+  },
+  "business": {
+    "name": "Moda & Estilo Store",
+    "industry": "E-commerce y Comercio Minorista",
+    "description": "Tienda online de ropa urbana, calzado y accesorios de moda con envíos rápidos a todo el país y garantía de satisfacción.",
+    "services": "Venta de ropa para dama y caballero, Calzado urbano, Accesorios, Envíos nacionales express, Cambios y devoluciones sin costo",
+    "hours": "Atención al cliente de Lunes a Sábado de 9:00 AM a 9:00 PM. Tienda online abierta 24/7.",
+    "location": "Centro de Distribución y Tienda Física: Av. Las Américas 500",
+    "phone": "+1 555-0109",
+    "email": "soporte@modayestilostore.com",
+    "website": "https://modayestilostore.com",
+    "paymentMethods": "Tarjeta de crédito/débito, PayPal, Mercado Pago, Pago contra entrega"
+  }
+}

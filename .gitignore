@@ -1,0 +1,11 @@
+node_modules/
+.env
+.env.local
+.env.*.local
+.wrangler/
+backups/
+dist/
+*.log
+member/config.local.json
+data/*.json
+!data/.gitkeep

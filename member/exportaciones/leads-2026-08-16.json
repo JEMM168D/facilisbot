@@ -1,0 +1,28 @@
+[
+  {
+    "id": "lead_a0a08350",
+    "name": "Ana Gómez",
+    "phone": "+1 555-9988",
+    "email": "ana@gmail.com",
+    "interest": "Cita: Consulta General (2026-08-25 a las 10:00 AM)",
+    "budget": "",
+    "status": "nuevo",
+    "channel": "web",
+    "notes": "",
+    "createdAt": "2026-08-16T06:38:32.148Z",
+    "updatedAt": "2026-08-16T07:02:35.524Z"
+  },
+  {
+    "id": "lead_848eee2d",
+    "name": "Carlos Mendoza",
+    "phone": "+52 55 1234 5678",
+    "email": "carlos@empresa.com",
+    "interest": "Consultoría Estratégica",
+    "budget": "",
+    "status": "nuevo",
+    "channel": "web",
+    "notes": "",
+    "createdAt": "2026-08-16T06:38:32.117Z",
+    "updatedAt": "2026-08-16T07:02:35.492Z"
+  }
+]

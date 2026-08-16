@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Panel de Administración · Yunque Bots</title>
+  <link rel="stylesheet" href="/admin/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+</head>
+<body>
+
+<div class="app-container">
+  <!-- Sidebar Navigation -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-icon">⚡</div>
+      <div class="brand-info">
+        <h2 id="sidebarBotName">Yunque Bot</h2>
+        <p id="sidebarStatus">En línea 24/7</p>
+      </div>
+    </div>
+
+    <ul class="nav-list">
+      <li class="nav-item active" data-tab="overview">
+        <span class="icon">📊</span> Resumen
+      </li>
+      <li class="nav-item" data-tab="inbox">
+        <span class="icon">💬</span> Bandeja de Entrada
+      </li>
+      <li class="nav-item" data-tab="leads">
+        <span class="icon">👥</span> CRM de Leads
+      </li>
+      <li class="nav-item" data-tab="kb">
+        <span class="icon">📚</span> Base de Conocimiento
+      </li>
+      <li class="nav-item" data-tab="channels">
+        <span class="icon">🔌</span> Conexiones
+      </li>
+      <li class="nav-item" data-tab="simulator">
+        <span class="icon">🧪</span> Simulador
+      </li>
+      <li class="nav-item" data-tab="settings">
+        <span class="icon">⚙️</span> Configuración
+      </li>
+    </ul>
+
+    <div class="sidebar-footer">
+      <span>Yunque v1.0</span>
+      <span style="color: var(--accent-gold); font-family: var(--font-mono);" id="sidebarNiche">starter</span>
+    </div>
+  </aside>
+
+  <!-- Main Content Views -->
+  <main class="main-content">
+
+    <!-- 1. OVERVIEW VIEW -->
+    <section id="view-overview" class="view-section active">
+      <div class="section-header">
+        <div>
+          <h1>Panel de Control</h1>
+          <p>Métricas de atención, rendimiento del asistente y actividad en tiempo real.</p>
+        </div>
+        <button class="btn btn-secondary" onclick="loadOverview()">↻ Actualizar</button>
+      </div>
+
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-title">Conversaciones Totales</div>
+          <div class="kpi-value" id="kpiTotalConvs">0</div>
+          <div class="kpi-footer" id="kpiConvs24h">+0 en las últimas 24h</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-title">Mensajes Atendidos 24h</div>
+          <div class="kpi-value" id="kpiMsgs24h">0</div>
+          <div class="kpi-footer" style="color: var(--accent-gold);">En tiempo real</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-title">Leads Capturados</div>
+          <div class="kpi-value" id="kpiTotalLeads" style="color: var(--accent-green);">0</div>
+          <div class="kpi-footer">Listos para seguimiento</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-title">Resolución del Bot</div>
+          <div class="kpi-value" id="kpiResolutionRate" style="color: var(--accent-blue);">100%</div>
+          <div class="kpi-footer" id="kpiEscalatedCount">0 transferencias humanas</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-title">Costo Estimado IA</div>
+          <div class="kpi-value" id="kpiCostUsd">$0.0000</div>
+          <div class="kpi-footer" id="kpiTotalTokens">0 tokens procesados</div>
+        </div>
+      </div>
+
+      <!-- Channel Status Card -->
+      <div class="panel-card">
+        <h3 class="panel-title">🔌 Estado de Canales Conectados</h3>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-top: 14px;">
+          <div style="background: rgba(255,255,255,0.02); padding: 14px; border-radius: 12px; border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between;">
+            <span>💬 WhatsApp</span>
+            <span class="badge" id="badgeStatusWhatsApp">Desconectado</span>
+          </div>
+          <div style="background: rgba(255,255,255,0.02); padding: 14px; border-radius: 12px; border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between;">
+            <span>✈️ Telegram</span>
+            <span class="badge" id="badgeStatusTelegram">Desconectado</span>
+          </div>
+          <div style="background: rgba(255,255,255,0.02); padding: 14px; border-radius: 12px; border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between;">
+            <span>📸 Instagram DMs</span>
+            <span class="badge" id="badgeStatusInstagram">Desconectado</span>
+          </div>
+          <div style="background: rgba(255,255,255,0.02); padding: 14px; border-radius: 12px; border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between;">
+            <span>🌐 Web Widget</span>
+            <span class="badge badge-active">Activo</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. INBOX VIEW -->
+    <section id="view-inbox" class="view-section">
+      <div class="section-header">
+        <div>
+          <h1>Bandeja de Entrada en Vivo</h1>
+          <p>Supervisa conversaciones de WhatsApp, Telegram, Instagram y Web en un solo lugar.</p>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <button class="btn btn-secondary btn-sm" onclick="loadConversations()">↻ Refrescar</button>
+        </div>
+      </div>
+
+      <div class="inbox-layout">
+        <!-- Thread List -->
+        <div class="thread-list" id="threadList">
+          <div style="padding: 20px; text-align: center; color: var(--text-dim);">Cargando conversaciones...</div>
+        </div>
+
+        <!-- Chat Viewer -->
+        <div class="chat-viewer">
+          <div class="chat-header">
+            <div>
+              <strong id="activeChatUser">Selecciona una conversación</strong>
+              <div style="font-size: 12px; color: var(--text-dim);" id="activeChatChannel">Canal: -</div>
+            </div>
+            <div id="activeChatActions" style="display: none; gap: 8px;">
+              <button class="btn btn-secondary btn-sm" id="btnToggleEscalate" onclick="toggleConversationEscalation()">Marcar como Resuelto</button>
+            </div>
+          </div>
+
+          <div class="chat-messages" id="chatMessages">
+            <div style="margin: auto; text-align: center; color: var(--text-dim);">
+              Selecciona una conversación del panel lateral para ver el historial y responder.
+            </div>
+          </div>
+
+          <div class="chat-input-bar">
+            <input type="text" id="manualReplyInput" class="form-control" placeholder="Escribe una respuesta como asesor humano...">
+            <button class="btn btn-primary" onclick="sendManualReply()">Enviar</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. LEADS / CRM VIEW -->
+    <section id="view-leads" class="view-section">
+      <div class="section-header">
+        <div>
+          <h1>CRM de Prospectos (Leads)</h1>
+          <p>Contactos calificados capturados automáticamente por el chatbot en todos los canales.</p>
+        </div>
+        <div style="display: flex; gap: 10px;">
+          <a href="/api/leads/export/csv" class="btn btn-primary btn-sm">📥 Exportar a CSV</a>
+          <button class="btn btn-secondary btn-sm" onclick="loadLeads()">↻ Refrescar</button>
+        </div>
+      </div>
+
+      <div class="panel-card" style="padding: 16px;">
+        <div style="display: flex; gap: 12px; margin-bottom: 16px;">
+          <input type="text" id="leadsSearchInput" class="form-control" placeholder="Buscar por nombre, teléfono, correo o interés..." style="max-width: 400px;" oninput="filterLeads()">
+          <select id="leadsStatusFilter" class="form-control" style="max-width: 180px;" onchange="filterLeads()">
+            <option value="">Todos los estados</option>
+            <option value="nuevo">Nuevo</option>
+            <option value="calificado">Calificado</option>
+            <option value="seguimiento">Seguimiento</option>
+            <option value="cerrado">Cerrado</option>
+          </select>
+        </div>
+
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Nombre</th>
+                <th>Teléfono / WhatsApp</th>
+                <th>Email</th>
+                <th>Interés / Consulta</th>
+                <th>Canal</th>
+                <th>Estado</th>
+                <th>Fecha</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="leadsTableBody">
+              <tr><td colspan="8" style="text-align: center; color: var(--text-dim);">Cargando prospectos...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. KNOWLEDGE BASE (KB) VIEW -->
+    <section id="view-kb" class="view-section">
+      <div class="section-header">
+        <div>
+          <h1>Base de Conocimiento (RAG)</h1>
+          <p>Documentos markdown y catálogos de los que el bot aprende para no inventar información.</p>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="createNewKbFile()">+ Nuevo Documento</button>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 280px 1fr; gap: 20px;">
+        <!-- File list -->
+        <div class="panel-card" style="padding: 14px;">
+          <h4 style="margin-bottom: 12px; font-size: 13px; color: var(--text-muted); text-transform: uppercase;">Archivos en /member/kb</h4>
+          <div id="kbFilesList" style="display: flex; flex-direction: column; gap: 4px;">
+            <div style="color: var(--text-dim); font-size: 13px;">Cargando...</div>
+          </div>
+        </div>
+
+        <!-- File Editor -->
+        <div class="panel-card">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+            <input type="text" id="kbCurrentFilename" class="form-control" placeholder="nombre-archivo.md" style="max-width: 260px;">
+            <div style="display: flex; gap: 8px;">
+              <button class="btn btn-secondary btn-sm" style="color: var(--accent-red);" onclick="deleteCurrentKbFile()">Eliminar</button>
+              <button class="btn btn-primary btn-sm" onclick="saveCurrentKbFile()">Guardar Cambios</button>
+            </div>
+          </div>
+          <textarea id="kbEditorContent" class="form-control" style="height: 380px; font-family: var(--font-mono); font-size: 13px;" placeholder="Escribe aquí en formato Markdown..."></textarea>
+          
+          <div style="margin-top: 18px; border-top: 1px solid var(--border-color); padding-top: 14px;">
+            <label style="font-size: 12px; color: var(--text-muted); font-weight: 600;">🔍 Probador de Búsqueda RAG:</label>
+            <div style="display: flex; gap: 8px; margin-top: 6px;">
+              <input type="text" id="kbSearchTestInput" class="form-control" placeholder="Escribe una pregunta de cliente para probar qué fragmento encuentra...">
+              <button class="btn btn-secondary btn-sm" onclick="testKbSearch()">Buscar</button>
+            </div>
+            <div id="kbSearchResults" style="margin-top: 10px; font-size: 12px; color: var(--accent-gold); font-family: var(--font-mono);"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. CHANNELS & CONNECTIONS VIEW -->
+    <section id="view-channels" class="view-section">
+      <div class="section-header">
+        <div>
+          <h1>Centro de Conexiones</h1>
+          <p>Conecta tu chatbot a WhatsApp, Telegram, Instagram y a tu sitio web.</p>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px;">
+        <!-- WhatsApp -->
+        <div class="panel-card">
+          <h3 class="panel-title">💬 WhatsApp (Meta Cloud API / Twilio)</h3>
+          <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 14px;">
+            Conecta tu número oficial a través de la Cloud API directa de Meta o mediante Twilio.
+          </p>
+          <div class="form-group">
+            <label>URL del Webhook:</label>
+            <input type="text" class="form-control" id="waWebhookUrl" readonly style="color: var(--accent-gold); font-family: var(--font-mono);">
+          </div>
+          <div class="form-group">
+            <label>Verify Token de Meta:</label>
+            <input type="text" class="form-control" id="waVerifyToken">
+          </div>
+          <div class="form-group">
+            <label>Phone Number ID (Meta):</label>
+            <input type="text" class="form-control" id="waPhoneId" placeholder="ej. 1098237498123">
+          </div>
+          <div class="form-group">
+            <label>Access Token Permanente (Meta):</label>
+            <input type="password" class="form-control" id="waAccessToken" placeholder="EAAB...">
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="saveWhatsAppChannel()">Guardar Conexión</button>
+        </div>
+
+        <!-- Telegram -->
+        <div class="panel-card">
+          <h3 class="panel-title">✈️ Telegram (BotFather)</h3>
+          <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 14px;">
+            El canal más rápido de conectar. Crea tu bot con @BotFather en Telegram y pega el token.
+          </p>
+          <div class="form-group">
+            <label>Telegram Bot Token:</label>
+            <input type="text" class="form-control" id="tgBotToken" placeholder="123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ">
+          </div>
+          <div class="form-group">
+            <label>Modo de Conexión:</label>
+            <select id="tgMode" class="form-control">
+              <option value="polling">Polling (Ideal para pruebas y local sin túneles)</option>
+              <option value="webhook">Webhook (Producción en la nube)</option>
+            </select>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="saveTelegramChannel()">Guardar Conexión</button>
+        </div>
+
+        <!-- Web Widget Snippet -->
+        <div class="panel-card">
+          <h3 class="panel-title">🌐 Widget para tu Sitio Web</h3>
+          <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 14px;">
+            Pega este código HTML antes de cerrar la etiqueta <code>&lt;/body&gt;</code> de tu página web:
+          </p>
+          <textarea id="widgetSnippet" class="form-control" style="height: 110px; font-family: var(--font-mono); font-size: 12px;" readonly></textarea>
+          <button class="btn btn-secondary btn-sm" style="margin-top: 10px;" onclick="copyWidgetSnippet()">📋 Copiar Código</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6. SIMULATOR / PLAYGROUND VIEW -->
+    <section id="view-simulator" class="view-section">
+      <div class="section-header">
+        <div>
+          <h1>Simulador de Chat en Vivo</h1>
+          <p>Prueba las respuestas del bot, la activación de herramientas y la extracción de datos en tiempo real.</p>
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="clearSimulatorChat()">Limpiar Chat</button>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 340px; gap: 20px; height: calc(100vh - 180px);">
+        <!-- Simulator Chat Box -->
+        <div class="chat-viewer">
+          <div class="chat-messages" id="simMessages">
+            <div class="msg-bubble msg-bot">
+              ¡Hola! Soy tu asistente en modo simulador. Escríbeme cualquier pregunta como si fueras un cliente para probar cómo respondo y cómo capturo prospectos.
+            </div>
+          </div>
+          <div class="chat-input-bar">
+            <input type="text" id="simInput" class="form-control" placeholder="Escribe un mensaje de prueba (ej. 'hola, ¿cuánto cuesta el corte de cabello y qué horario tienen?')..." onkeydown="if(event.key==='Enter') sendSimMessage()">
+            <button class="btn btn-primary" onclick="sendSimMessage()">Enviar</button>
+          </div>
+        </div>
+
+        <!-- Simulator Debug & Tool Inspector -->
+        <div class="panel-card" style="display: flex; flex-direction: column; overflow-y: auto;">
+          <h4 style="font-size: 14px; margin-bottom: 12px; color: var(--accent-gold);">⚡ Inspector de Ejecución</h4>
+          <div style="font-size: 12px; margin-bottom: 8px;">Proveedor de IA: <b id="simProviderTag" style="color: var(--text-main);">-</b></div>
+          <div style="font-size: 12px; margin-bottom: 8px;">Modelo: <b id="simModelTag" style="color: var(--text-main);">-</b></div>
+          <div style="font-size: 12px; margin-bottom: 8px;">Tokens: <b id="simTokensTag" style="color: var(--text-main);">-</b></div>
+          <div style="border-top: 1px solid var(--border-color); margin-top: 8px; padding-top: 8px;">
+            <label style="font-size: 11px; text-transform: uppercase; color: var(--text-dim);">Herramientas Disparadas:</label>
+            <pre id="simToolInspector" style="margin-top: 6px; background: #000; padding: 10px; border-radius: 8px; font-size: 11px; color: var(--accent-green); overflow-x: auto; max-height: 220px;">[Ninguna todavía]</pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 7. SETTINGS VIEW -->
+    <section id="view-settings" class="view-section">
+      <div class="section-header">
+        <div>
+          <h1>Configuración del Bot y Negocio</h1>
+          <p>Personaliza el cerebro de IA, el tono, las reglas y los datos de tu empresa.</p>
+        </div>
+        <button class="btn btn-primary" onclick="saveAllSettings()">Guardar Toda la Configuración</button>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+        <!-- Bot Settings -->
+        <div class="panel-card">
+          <h3 class="panel-title">🤖 Personalidad y Cerebro de IA</h3>
+          <div class="form-group">
+            <label>Nombre del Asistente:</label>
+            <input type="text" id="cfgBotName" class="form-control">
+          </div>
+          <div class="form-group">
+            <label>Giro del Negocio:</label>
+            <select id="cfgBotNiche" class="form-control">
+              <option value="starter">Starter (Genérico)</option>
+              <option value="barberia">Barbería</option>
+              <option value="restaurante">Restaurante</option>
+              <option value="cafeteria">Cafetería</option>
+              <option value="panaderia">Panadería</option>
+              <option value="salon">Salón de Belleza</option>
+              <option value="spa">Spa</option>
+              <option value="dentista">Dentista</option>
+              <option value="clinica">Clínica Médica</option>
+              <option value="gimnasio">Gimnasio</option>
+              <option value="coach">Coach / Consultor</option>
+              <option value="inmobiliaria">Inmobiliaria</option>
+              <option value="tienda">Tienda / E-commerce</option>
+              <option value="crm">CRM / Ventas B2B</option>
+              <option value="hoteleria">Hotelería</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Proveedor de IA:</label>
+            <select id="cfgLlmProvider" class="form-control">
+              <option value="gemini">Google Gemini 3.5 Flash Lite (Ultrarrápido y Económico)</option>
+              <option value="anthropic">Anthropic Claude</option>
+              <option value="openai">OpenAI (GPT-4o / GPT-4o-mini)</option>
+              <option value="grok">xAI Grok</option>
+              <option value="ollama">Ollama / DeepSeek Local</option>
+              <option value="mock">Simulador Offline (Sin API Key)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Modelo:</label>
+            <input type="text" id="cfgLlmModel" class="form-control" placeholder="gemini-3.5-flash-lite">
+          </div>
+          <div class="form-group">
+            <label>API Key del Proveedor:</label>
+            <input type="password" id="cfgLlmApiKey" class="form-control" placeholder="Pega tu API Key de Gemini, Claude, OpenAI o Grok...">
+          </div>
+          <div class="form-group">
+            <label>Tono de Comunicación:</label>
+            <input type="text" id="cfgBotPersonality" class="form-control" placeholder="ej. cercano, servicial, profesional y conciso">
+          </div>
+          <div class="form-group">
+            <label>Instrucciones de Sistema Adicionales:</label>
+            <textarea id="cfgSystemPromptBonus" class="form-control" placeholder="Instrucciones especiales para el asistente..."></textarea>
+          </div>
+        </div>
+
+        <!-- Business Profile -->
+        <div class="panel-card">
+          <h3 class="panel-title">🏢 Perfil del Negocio</h3>
+          <div class="form-group">
+            <label>Nombre de la Empresa:</label>
+            <input type="text" id="cfgBizName" class="form-control">
+          </div>
+          <div class="form-group">
+            <label>Servicios / Oferta Principal:</label>
+            <input type="text" id="cfgBizServices" class="form-control">
+          </div>
+          <div class="form-group">
+            <label>Horarios de Atención:</label>
+            <input type="text" id="cfgBizHours" class="form-control">
+          </div>
+          <div class="form-group">
+            <label>Ubicación / Dirección:</label>
+            <input type="text" id="cfgBizLocation" class="form-control">
+          </div>
+          <div class="form-group">
+            <label>Teléfono / WhatsApp:</label>
+            <input type="text" id="cfgBizPhone" class="form-control">
+          </div>
+          <div class="form-group">
+            <label>Correo Electrónico:</label>
+            <input type="text" id="cfgBizEmail" class="form-control">
+          </div>
+          <div class="form-group">
+            <label>Métodos de Pago Aceptados:</label>
+            <input type="text" id="cfgBizPayments" class="form-control">
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- Global Toast Notification -->
+<div id="toast" class="toast">Guardado exitosamente</div>
+
+<script src="/admin/app.js"></script>
+</body>
+</html>

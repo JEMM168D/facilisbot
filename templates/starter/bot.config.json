@@ -1,0 +1,23 @@
+{
+  "bot": {
+    "name": "Asistente Virtual",
+    "niche": "starter",
+    "language": "es",
+    "personality": "cercano, servicial, profesional y conciso",
+    "greeting": "¡Hola! Bienvenido a nuestro asistente virtual. ¿En qué te puedo ayudar hoy?",
+    "fallbackMessage": "Disculpa, ¿podrías darme más detalles de lo que buscas para poder orientarte?",
+    "escalationMessage": "Te comunico con un asesor de nuestro equipo para atenderte personalmente."
+  },
+  "business": {
+    "name": "Mi Negocio",
+    "industry": "Servicios y Atención al Cliente",
+    "description": "Empresa comprometida con brindar la mejor atención, soluciones personalizadas y precios justos a todos nuestros clientes.",
+    "services": "Atención al cliente, Consultoría, Ventas, Soporte técnico, Asesoría personalizada",
+    "hours": "Lunes a Viernes de 9:00 AM a 6:00 PM. Sábados de 9:00 AM a 2:00 PM.",
+    "location": "Atención en línea y oficinas centrales",
+    "phone": "+1 555-0100",
+    "email": "contacto@minegocio.com",
+    "website": "https://minegocio.com",
+    "paymentMethods": "Efectivo, Tarjetas de débito/crédito, Transferencia bancaria, Pagos en línea"
+  }
+}
