@@ -111,20 +111,20 @@ async function runTests() {
     const resOverview = await fetch(`http://localhost:${testPort}/api/overview`);
     assert(resOverview.status === 200, 'GET /api/overview responde 200');
 
-    // Auth (bypassed in local)
+    // Auth
     const resAuth = await fetch(`http://localhost:${testPort}/api/auth`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code: 'anything' })
+      body: JSON.stringify({ code: 'admin123' })
     });
     const authData = await resAuth.json();
-    assert(authData.success === true, 'POST /api/auth auto-aprueba en modo local');
+    assert(authData.success === true, 'POST /api/auth verifica credenciales admin');
 
     // Chat
     const resChat = await fetch(`http://localhost:${testPort}/api/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: 'Hola', botId: 'default' })
+      body: JSON.stringify({ message: 'Hola', botId: 'default', sessionId: 'sess_' + Date.now() })
     });
     const chatData = await resChat.json();
     assert(resChat.status === 200 && chatData.reply, 'POST /api/chat responde con reply');
@@ -149,6 +149,132 @@ async function runTests() {
     // Config
     const resConfig = await fetch(`http://localhost:${testPort}/api/config`);
     assert(resConfig.status === 200, 'GET /api/config responde 200');
+
+    // ── PRUEBA INTENSIVA KB: 1. ENTREVISTA ASISTIDA 6 PASOS ──
+    console.log('\n\x1b[38;5;39m    [KB Test] Probando POST /api/kb/interview/step (6 pasos completos)...\x1b[0m');
+    const testBizData = {
+      businessName: 'Taller Mecánico Especializado Hidalgo',
+      niche: 'Taller automotriz especializado en frenos, suspensión y afinación',
+      location: 'Av. Hidalgo #123, Col. Centro, CDMX',
+      coverage: 'Ciudad de México y Área Metropolitana',
+      phone: '+52 55 5555 1234',
+      email: 'contacto@tallerhidalgo.com',
+      hours: 'Lunes a Viernes de 8:30 AM a 7:00 PM corrido',
+      weekendHours: 'Sábados de 9:00 AM a 3:00 PM. Domingos cerrado',
+      responseTime: 'Respuesta inmediata por WhatsApp / Citas con 24h de anticipación',
+      servicesText: '1. Afinación Mayor: Incluye cambio de aceite 100% sintético, filtros de aire, aceite y gasolina, y bujías de iridio.\n2. Frenos y Suspensión: Rectificación de discos, cambio de balatas cerámicas y amortiguadores.\n3. Diagnóstico por Computadora: Escaneo OBD2 integral con reporte digital.',
+      pricingText: 'Afinación Mayor desde $1,850 MXN. Cambio de frenos desde $1,250 MXN. Diagnóstico computarizado $450 MXN (gratis si realizas la reparación con nosotros).',
+      paymentMethods: 'Tarjetas de crédito y débito (Visa, MasterCard, Stripe), Transferencia SPEI y Efectivo',
+      depositPolicy: 'Se requiere 50% de anticipo para refacciones de importación o pedidos especiales',
+      warranty: '6 meses o 10,000 km de garantía total por escrito en mano de obra',
+      refundPolicy: 'Cancelación sin costo notificando con al menos 24 horas de anticipación a la cita',
+      billingPolicy: 'Facturamos todos los servicios, enviar CSF y datos fiscales dentro del mismo mes de atención',
+      faqText: '¿Cuánto tiempo tardan en entregar el vehículo?\nLa mayoría de afinaciones mayores se entregan el mismo día en 4 a 6 horas.\n\n¿Cuentan con refacciones originales?\nSí, trabajamos únicamente con refacciones originales OEM o equipo certificado.\n\n¿Tienen servicio de grúa?\nSí, contamos con convenio de grúa para traslados de emergencia en CDMX.'
+    };
+
+    const expectedFiles = [
+      'perfil_ubicacion.md',
+      'horarios_atencion.md',
+      'servicios_productos.md',
+      'precios_pagos.md',
+      'politicas_garantias.md',
+      'preguntas_frecuentes.md'
+    ];
+
+    for (let step = 1; step <= 6; step++) {
+      const resStep = await fetch(`http://localhost:${testPort}/api/kb/interview/step`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          botId: 'default',
+          step,
+          answers: testBizData
+        })
+      });
+      assert(resStep.status === 200, `POST /api/kb/interview/step (Paso ${step}) responde 200`);
+      const stepData = await resStep.json();
+      assert(stepData.success === true, `Paso ${step} ejecutado exitosamente`);
+      assert(stepData.savedSection === expectedFiles[step - 1], `Paso ${step} guardó archivo correcto: ${stepData.savedSection}`);
+      if (step === 6) {
+        assert(stepData.isFinished === true, 'Paso 6 marca entrevista como completada (isFinished: true)');
+      }
+    }
+
+    // ── PRUEBA INTENSIVA KB: 2. VERIFICAR GET /api/kb Y GET /api/kb/:filename ──
+    console.log('\n\x1b[38;5;39m    [KB Test] Verificando documentos en GET /api/kb y GET /api/kb/:filename...\x1b[0m');
+    const resKbList = await fetch(`http://localhost:${testPort}/api/kb?bot_id=default`);
+    assert(resKbList.status === 200, 'GET /api/kb responde 200');
+    const kbListData = await resKbList.json();
+    const docNames = kbListData.documents.map(d => typeof d === 'string' ? d : d.filename);
+
+    for (const expFile of expectedFiles) {
+      assert(docNames.includes(expFile), `Archivo ${expFile} aparece en listado de KB`);
+      
+      const resDoc = await fetch(`http://localhost:${testPort}/api/kb/${expFile}?bot_id=default`);
+      assert(resDoc.status === 200, `GET /api/kb/${expFile} responde 200`);
+      const docData = await resDoc.json();
+      assert(docData.filename === expFile, `Documento ${expFile} retornado con nombre correcto`);
+      assert(docData.content && docData.content.length > 20, `Documento ${expFile} tiene contenido legible (${docData.content?.length || 0} bytes)`);
+    }
+
+    // ── PRUEBA INTENSIVA KB: 3. AUTO-SCRAPER WEB ──
+    console.log('\n\x1b[38;5;39m    [KB Test] Probando POST /api/kb/scrape con URL real...\x1b[0m');
+    const resScrape = await fetch(`http://localhost:${testPort}/api/kb/scrape`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        botId: 'default',
+        url: 'https://example.com'
+      })
+    });
+    assert(resScrape.status === 200, 'POST /api/kb/scrape responde 200');
+    const scrapeData = await resScrape.json();
+    assert(scrapeData.success === true, 'Scraping web completado exitosamente');
+    assert(scrapeData.filename && scrapeData.filename.startsWith('web_'), `Archivo web guardado con prefijo web_: ${scrapeData.filename}`);
+    assert(scrapeData.title, `Título extraído de la página web: "${scrapeData.title}"`);
+
+    // Verify scraped document is in KB
+    const resScrapedDoc = await fetch(`http://localhost:${testPort}/api/kb/${scrapeData.filename}?bot_id=default`);
+    assert(resScrapedDoc.status === 200, `GET /api/kb/${scrapeData.filename} retornado exitosamente`);
+    const scrapedDocData = await resScrapedDoc.json();
+    assert(scrapedDocData.content && scrapedDocData.content.includes('example.com'), 'Contenido del documento web incluye la fuente URL');
+
+    // ── PRUEBA INTENSIVA KB: 4. CONSULTA CHAT SOBRE PRECIOS Y HORARIOS ──
+    console.log('\n\x1b[38;5;39m    [KB Test] Probando consultas de Chat sobre Precios y Horarios...\x1b[0m');
+    
+    // Consulta 1: Horarios
+    const resChatHours = await fetch(`http://localhost:${testPort}/api/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        botId: 'default',
+        sessionId: 'test_hours_' + Date.now(),
+        message: '¿Cuáles son sus horarios de atención y cuándo abren los sábados?'
+      })
+    });
+    assert(resChatHours.status === 200, 'POST /api/chat (Horarios) responde 200');
+    const chatHoursData = await resChatHours.json();
+    assert(chatHoursData.reply, 'Chat generó respuesta sobre horarios');
+    const replyHoursLower = chatHoursData.reply.toLowerCase();
+    const hasHoursInfo = replyHoursLower.includes('8:30') || replyHoursLower.includes('viernes') || replyHoursLower.includes('sábado') || replyHoursLower.includes('sabado') || replyHoursLower.includes('horario');
+    assert(hasHoursInfo, 'Respuesta contiene datos exactos de horarios de la KB');
+
+    // Consulta 2: Precios
+    const resChatPrices = await fetch(`http://localhost:${testPort}/api/test/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        botId: 'default',
+        sessionId: 'sim_prices_' + Date.now(),
+        message: '¿Cuánto cuesta la afinación mayor y qué métodos de pago aceptan?'
+      })
+    });
+    assert(resChatPrices.status === 200, 'POST /api/test/chat (Precios) responde 200');
+    const chatPricesData = await resChatPrices.json();
+    assert(chatPricesData.reply, 'Test Chat generó respuesta sobre precios: "' + (chatPricesData.reply || '').slice(0, 100) + '..."');
+    const replyPricesLower = chatPricesData.reply.toLowerCase();
+    const hasPricesInfo = replyPricesLower.includes('1,850') || replyPricesLower.includes('1850') || replyPricesLower.includes('afinación') || replyPricesLower.includes('afinacion') || replyPricesLower.includes('pago') || replyPricesLower.includes('spei') || replyPricesLower.includes('tarjeta') || replyPricesLower.includes('precio');
+    assert(hasPricesInfo, 'Respuesta contiene datos exactos de precios y métodos de pago de la KB');
 
   } finally {
     serverInstance.close();

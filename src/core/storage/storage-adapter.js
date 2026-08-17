@@ -51,7 +51,7 @@ class CloudflareStorageAdapter {
     const niche = config.bot?.niche || 'starter';
     const apiProvider = config.llm?.provider || 'gemini';
     const apiKey = config.llm?.geminiApiKey || config.llm?.anthropicApiKey || config.llm?.openaiApiKey || config.llm?.grokApiKey || null;
-    const accessCode = config._accessCode || null;
+    const accessCode = config._accessCode || config.accessCode || config.pin || null;
 
     if (accessCode) {
       await this.db.prepare(`
@@ -151,6 +151,32 @@ class CloudflareStorageAdapter {
     await this.db.prepare(
       "UPDATE conversations SET status = ?, updated_at = datetime('now') WHERE id = ?"
     ).bind(status || 'active', id).run();
+  }
+
+  async updateConversation(id, updates = {}) {
+    const keys = Object.keys(updates).filter(k => updates[k] !== undefined);
+    if (keys.length === 0) return;
+    
+    // Map camelCase to snake_case if needed
+    const columnMap = {
+      leadId: 'lead_id',
+      userName: 'user_name',
+      userId: 'user_id',
+      lastMessage: 'last_message'
+    };
+
+    const setClauses = [];
+    const params = [];
+    for (const k of keys) {
+      const col = columnMap[k] || k;
+      setClauses.push(`${col} = ?`);
+      params.push(updates[k]);
+    }
+    params.push(id);
+
+    await this.db.prepare(`
+      UPDATE conversations SET ${setClauses.join(', ')}, updated_at = datetime('now') WHERE id = ?
+    `).bind(...params).run();
   }
 
   // --- Messages ---
@@ -275,24 +301,51 @@ class CloudflareStorageAdapter {
 
   async listKBDocuments(botId) {
     if (!this.kv) return [];
+    
+    // Check manifest first for instant consistency
+    try {
+      const manifest = await this.kv.get(`kb:${botId}:__manifest__`, { type: 'json' });
+      if (manifest && Array.isArray(manifest)) {
+        return manifest.filter(f => f && f !== '__manifest__');
+      }
+    } catch (e) {}
+
     const prefix = `kb:${botId}:`;
     const result = await this.kv.list({ prefix });
-    return result.keys.map(k => k.name.replace(prefix, ''));
+    return (result.keys || [])
+      .map(k => k.name.replace(prefix, ''))
+      .filter(name => name && name !== '__manifest__');
   }
 
   async getKBDocument(botId, filename) {
-    if (!this.kv) return null;
+    if (!this.kv || filename === '__manifest__') return null;
     return await this.kv.get(`kb:${botId}:${filename}`);
   }
 
   async saveKBDocument(botId, filename, content) {
-    if (!this.kv) return;
+    if (!this.kv || filename === '__manifest__') return;
     await this.kv.put(`kb:${botId}:${filename}`, content);
+    
+    // Update manifest for instant consistency
+    try {
+      const currentList = await this.listKBDocuments(botId);
+      if (!currentList.includes(filename)) {
+        currentList.push(filename);
+      }
+      const cleanList = currentList.filter(f => f && f !== '__manifest__');
+      await this.kv.put(`kb:${botId}:__manifest__`, JSON.stringify(cleanList));
+    } catch (e) {}
   }
 
   async deleteKBDocument(botId, filename) {
-    if (!this.kv) return;
+    if (!this.kv || filename === '__manifest__') return;
     await this.kv.delete(`kb:${botId}:${filename}`);
+    
+    try {
+      const currentList = await this.listKBDocuments(botId);
+      const cleanList = currentList.filter(f => f !== filename && f !== '__manifest__');
+      await this.kv.put(`kb:${botId}:__manifest__`, JSON.stringify(cleanList));
+    } catch (e) {}
   }
 
   // --- Metrics ---
@@ -326,6 +379,17 @@ class CloudflareStorageAdapter {
     const totalLeadsResult = await this.db.prepare('SELECT COUNT(*) as totalLeads FROM leads WHERE bot_id = ?').bind(cleanBotId).first();
     const totalLeads = totalLeadsResult?.totalLeads || 0;
     
+    // Conversations and messages in last 24 hours
+    const convs24hResult = await this.db.prepare(
+      "SELECT COUNT(*) as c24 FROM conversations WHERE bot_id = ? AND updated_at >= datetime('now', '-1 day')"
+    ).bind(cleanBotId).first();
+    const conversations24h = convs24hResult?.c24 || 0;
+
+    const msgs24hResult = await this.db.prepare(
+      "SELECT COUNT(*) as m24 FROM messages WHERE bot_id = ? AND created_at >= datetime('now', '-1 day')"
+    ).bind(cleanBotId).first();
+    const messages24h = msgs24hResult?.m24 || 0;
+
     // Status counts for resolution/escalation
     const { results: statuses } = await this.db.prepare('SELECT status, COUNT(*) as count FROM conversations WHERE bot_id = ? GROUP BY status').bind(cleanBotId).all();
     
@@ -334,8 +398,9 @@ class CloudflareStorageAdapter {
       if (row.status === 'resolved') resolved = row.count;
       if (row.status === 'escalated') escalated = row.count;
     }
-    
-    const botResolutionRate = totalConversations > 0 ? ((resolved / totalConversations) * 100).toFixed(1) + '%' : '100%';
+
+    const nonEscalated = Math.max(0, totalConversations - escalated);
+    const botResolutionRate = totalConversations > 0 ? ((nonEscalated / totalConversations) * 100).toFixed(1) + '%' : '100%';
     const escalationRate = totalConversations > 0 ? ((escalated / totalConversations) * 100).toFixed(1) + '%' : '0%';
 
     // Usage from metrics table
@@ -353,8 +418,8 @@ class CloudflareStorageAdapter {
 
     return {
       totalConversations,
-      conversations24h: 0,
-      messages24h: 0,
+      conversations24h,
+      messages24h,
       totalLeads,
       escalationRate,
       escalatedCount: escalated,
@@ -432,16 +497,7 @@ class LocalStorageAdapter {
   async getConfig(botId) {
     await this._initPaths();
     
-    // Try single config file first (legacy)
-    const legacyPath = this.path.join(this.baseDir, 'config.local.json');
-    if (this.fs.existsSync(legacyPath)) {
-      try {
-        const data = await this.fsPromises.readFile(legacyPath, 'utf8');
-        return JSON.parse(data);
-      } catch (e) {}
-    }
-
-    // Try bot specific config
+    // 1. Try bot specific config first
     const botPath = this.path.join(this.baseDir, 'bots', botId, 'config.json');
     if (this.fs.existsSync(botPath)) {
       try {
@@ -449,6 +505,18 @@ class LocalStorageAdapter {
         return JSON.parse(data);
       } catch (e) {}
     }
+
+    // 2. Try single config file ONLY for default bot
+    if (botId === 'default') {
+      const legacyPath = this.path.join(this.baseDir, 'config.local.json');
+      if (this.fs.existsSync(legacyPath)) {
+        try {
+          const data = await this.fsPromises.readFile(legacyPath, 'utf8');
+          return JSON.parse(data);
+        } catch (e) {}
+      }
+    }
+
     return null;
   }
 
@@ -565,6 +633,13 @@ class LocalStorageAdapter {
     }
   }
 
+  async updateConversation(id, updates = {}) {
+    const conv = this.memoryDb.conversations.find(c => c.id === id);
+    if (conv) {
+      Object.assign(conv, updates, { updated_at: new Date().toISOString() });
+    }
+  }
+
   // --- Messages ---
 
   async addMessage({ conversationId, botId, role, content, toolCalls = null, tokens = 0 }) {
@@ -643,7 +718,7 @@ class LocalStorageAdapter {
   async listKBDocuments(botId) {
     await this._initPaths();
     
-    // Check old location and new bot-specific location
+    // Check old location for default bot and new bot-specific location
     const legacyKbPath = this.path.join(this.baseDir, 'kb');
     const botKbPath = this.path.join(this.baseDir, 'bots', botId, 'kb');
     
@@ -653,7 +728,7 @@ class LocalStorageAdapter {
       if (this.fs.existsSync(botKbPath)) {
         const files = await this.fsPromises.readdir(botKbPath);
         docs = files;
-      } else if (this.fs.existsSync(legacyKbPath)) {
+      } else if (botId === 'default' && this.fs.existsSync(legacyKbPath)) {
         const files = await this.fsPromises.readdir(legacyKbPath);
         docs = files;
       }
@@ -671,7 +746,7 @@ class LocalStorageAdapter {
     try {
       if (this.fs.existsSync(botKbPath)) {
         return await this.fsPromises.readFile(botKbPath, 'utf8');
-      } else if (this.fs.existsSync(legacyKbPath)) {
+      } else if (botId === 'default' && this.fs.existsSync(legacyKbPath)) {
         return await this.fsPromises.readFile(legacyKbPath, 'utf8');
       }
     } catch (e) {}
@@ -724,7 +799,15 @@ class LocalStorageAdapter {
     const resolved = convs.filter(c => c.status === 'resolved').length;
     const escalated = convs.filter(c => c.status === 'escalated').length;
     
-    const botResolutionRate = totalConversations > 0 ? ((resolved / totalConversations) * 100).toFixed(1) + '%' : '0%';
+    const now = Date.now();
+    const oneDayAgo = now - 24 * 60 * 60 * 1000;
+    const conversations24h = convs.filter(c => new Date(c.updated_at || c.created_at).getTime() >= oneDayAgo).length;
+    
+    const msgs = this.memoryDb.messages.filter(m => m.bot_id === botId);
+    const messages24h = msgs.filter(m => new Date(m.created_at).getTime() >= oneDayAgo).length;
+
+    const nonEscalated = Math.max(0, totalConversations - escalated);
+    const botResolutionRate = totalConversations > 0 ? ((nonEscalated / totalConversations) * 100).toFixed(1) + '%' : '100%';
     const escalationRate = totalConversations > 0 ? ((escalated / totalConversations) * 100).toFixed(1) + '%' : '0%';
 
     const metrics = this.memoryDb.metrics.filter(m => m.bot_id === botId && m.type === 'tokens');
@@ -741,13 +824,14 @@ class LocalStorageAdapter {
 
     return {
       totalConversations,
-      conversations24h: 0,
-      messages24h: 0,
+      conversations24h,
+      messages24h,
       totalLeads,
       escalationRate,
+      escalatedCount: escalated,
       botResolutionRate,
       totalTokens,
-      estimatedCostUsd,
+      estimatedCostUsd: Number(estimatedCostUsd.toFixed(4)),
       providerUsage
     };
   }
@@ -779,7 +863,26 @@ class LocalStorageAdapter {
   // --- Auth ---
 
   async authenticateBot(accessCode) {
-    return 'default'; // In local mode, bypass complex auth
+    if (!accessCode) return null;
+    await this._initPaths();
+    const botsDir = this.path.join(this.baseDir, 'bots');
+    if (this.fs.existsSync(botsDir)) {
+      const items = await this.fsPromises.readdir(botsDir, { withFileTypes: true });
+      for (const item of items) {
+        if (item.isDirectory()) {
+          const config = await this.getConfig(item.name);
+          if (config && (config._accessCode === accessCode || config.accessCode === accessCode || config.pin === accessCode)) {
+            return item.name;
+          }
+        }
+      }
+    }
+    // Also check default bot config
+    const defaultConfig = await this.getConfig('default');
+    if (defaultConfig && (defaultConfig._accessCode === accessCode || defaultConfig.accessCode === accessCode || defaultConfig.pin === accessCode)) {
+      return 'default';
+    }
+    return null;
   }
 }
 

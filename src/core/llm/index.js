@@ -488,49 +488,143 @@ export class UniversalLlmEngine {
 
     let reply = '';
 
-    // Automatic tool triggers based on message intent in simulation/fallback mode
-    if (lastLower.includes('precio') || lastLower.includes('costo') || lastLower.includes('cuanto') || lastLower.includes('catálogo') || lastLower.includes('servicio')) {
-      const searchResult = await executeTool('search_kb', { query: lastMsg }, conversationContext);
-      allExecutedTools.push({ name: 'search_kb', args: { query: lastMsg }, result: searchResult });
-      
-      const details = searchResult?.results?.[0]?.content || biz.services || 'servicios especializados';
-      reply = `¡Hola! Con gusto te comparto la información sobre nuestros precios y servicios:\n\n${details}\n\n¿Te gustaría que te coticemos formalmente o agendemos una cita?`;
-    } else if (lastLower.includes('mi nombre') || lastLower.includes('me llamo') || lastLower.includes('whats') || lastLower.includes('telefono') || lastLower.includes('correo') || lastLower.includes('@')) {
-      // Extract phone/email/name
-      const emailMatch = lastMsg.match(/[\w.-]+@[\w.-]+\.\w+/);
-      const phoneMatch = lastMsg.match(/(\+?\d[\d\s-]{7,}\d)/);
-      const leadResult = await executeTool('capture_lead', {
-        name: 'Cliente Interesado',
-        phone: phoneMatch ? phoneMatch[0] : null,
-        email: emailMatch ? emailMatch[0] : null,
-        interest: lastMsg
-      }, conversationContext);
-      allExecutedTools.push({ name: 'capture_lead', args: { interest: lastMsg }, result: leadResult });
+    const cleanText = (str) => (str || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const cleanMsg = cleanText(lastMsg);
 
-      reply = `¡Excelente! He registrado tus datos con éxito en nuestro sistema de atención. Un asesor se comunicará contigo a la brevedad para darte seguimiento puntual. ¿Hay algún otro detalle que quieras agregar?`;
-    } else if (lastLower.includes('humano') || lastLower.includes('asesor') || lastLower.includes('persona') || lastLower.includes('queja') || lastLower.includes('hablar con alguien')) {
+    // 1. 🚨 Vigilante: Cliente molesto, enojado, inconforme o queja severa
+    const isAngryOrComplaint = (
+      cleanMsg.includes('enojad') || cleanMsg.includes('molest') || cleanMsg.includes('inconform') ||
+      cleanMsg.includes('pesim') || cleanMsg.includes('terrible') || cleanMsg.includes('fraude') ||
+      cleanMsg.includes('reclamo') || cleanMsg.includes('queja') || cleanMsg.includes('estafa') ||
+      cleanMsg.includes('decepcion') || cleanMsg.includes('furios') || cleanMsg.includes('demora') ||
+      cleanMsg.includes('incompetente') || cleanMsg.includes('falta de respeto') || cleanMsg.includes('supervisor') ||
+      cleanMsg.includes('gerente') || cleanMsg.includes('mal servicio') || cleanMsg.includes('cancelar')
+    );
+
+    // 2. 👥 Captura de Leads: El usuario proporciona datos de contacto o cotización
+    const hasContactInfo = (
+      cleanMsg.includes('mi nombre') || cleanMsg.includes('me llamo') || cleanMsg.includes('soy ') ||
+      cleanMsg.includes('whats') || cleanMsg.includes('telefono') || cleanMsg.includes('celular') ||
+      cleanMsg.includes('cel:') || cleanMsg.includes('correo') || cleanMsg.includes('email') ||
+      cleanMsg.includes('@') || /(\+?\d[\d\s-]{7,}\d)/.test(lastMsg)
+    );
+
+    // 3. 💳 Cobros por Chat: Enlaces de pago, anticipo o liquidación
+    const isPaymentRequest = (
+      cleanMsg.includes('pagar') || cleanMsg.includes('link de pago') || cleanMsg.includes('enlace de pago') ||
+      cleanMsg.includes('link para pagar') || cleanMsg.includes('anticipo') || cleanMsg.includes('apartar') ||
+      cleanMsg.includes('cobro')
+    );
+
+    // 4. ⭐ Satisfacción y Reseñas
+    const isSatisfaction = (
+      cleanMsg.includes('gracias') || cleanMsg.includes('muchas gracias') || cleanMsg.includes('excelente') ||
+      cleanMsg.includes('perfecto') || cleanMsg.includes('muy amable') || cleanMsg.includes('me encanto') ||
+      cleanMsg.includes('gran atencion') || cleanMsg.includes('resuelto') || cleanMsg.includes('quedo claro')
+    );
+
+    if (isAngryOrComplaint) {
+      // Disparar Alerta Vigilante
+      const vigilanteResult = await executeTool('alert_vigilante', {
+        reason: 'Cliente inconforme o molesto por experiencia de servicio',
+        sentimentScore: 'critico',
+        summary: lastMsg
+      }, conversationContext);
+      allExecutedTools.push({ name: 'alert_vigilante', args: { reason: 'Cliente molesto', sentimentScore: 'critico', summary: lastMsg }, result: vigilanteResult });
+
+      // Disparar Escalación a Humano
+      const handoffResult = await executeTool('escalate_to_human', {
+        reason: 'Queja / Cliente molesto requiere atención prioritaria',
+        customerSummary: lastMsg,
+        urgency: 'alta'
+      }, conversationContext);
+      allExecutedTools.push({ name: 'escalate_to_human', args: { reason: 'Queja cliente', customerSummary: lastMsg, urgency: 'alta' }, result: handoffResult });
+
+      reply = `Lamento profundamente los inconvenientes y la molestia ocasionada. He activado una alerta prioritaria con la gerencia y transferido tu caso de inmediato con un supervisor humano para darte una solución urgente. En unos momentos te atenderán directamente.`;
+
+    } else if (hasContactInfo && !isPaymentRequest && !isSatisfaction) {
+      // Extraer datos estructurados del lead
+      const emailMatch = lastMsg.match(/[\w.-]+@[\w.-]+\.[A-Za-z]{2,}/);
+      const phoneMatch = lastMsg.match(/(\+?\d[\d\s-]{7,}\d)/);
+      const nameMatch = lastMsg.match(/(?:me llamo|mi nombre es|soy)\s+([A-Za-zÀ-ÿ\s]+?)(?:,|\.|\s+mi|\s+y|\s+cel|\s+tel|\s+correo|\s+whats|$)/i);
+      const budgetMatch = lastMsg.match(/(?:presupuesto(?: de)?|budget)\s*(?:de\s*)?([$\d,.\s]+(?:usd|mxn|dolares|pesos)?)/i);
+
+      const extractedName = nameMatch ? nameMatch[1].trim() : (conversationContext.userName || 'Prospecto Web');
+      const extractedPhone = phoneMatch ? phoneMatch[0].trim() : null;
+      const extractedEmail = emailMatch ? emailMatch[0].trim() : null;
+      const extractedBudget = budgetMatch ? budgetMatch[1].trim() : null;
+
+      const leadResult = await executeTool('capture_lead', {
+        name: extractedName,
+        phone: extractedPhone,
+        email: extractedEmail,
+        interest: lastMsg,
+        budget: extractedBudget
+      }, conversationContext);
+      allExecutedTools.push({ name: 'capture_lead', args: { name: extractedName, phone: extractedPhone, email: extractedEmail, interest: lastMsg, budget: extractedBudget }, result: leadResult });
+
+      reply = `¡Excelente, ${extractedName}! He registrado tus datos de contacto en nuestro sistema. Uno de nuestros especialistas revisará tu solicitud para darte seguimiento formal a la brevedad. ¿Hay algún requerimiento específico o detalle adicional que debamos considerar?`;
+
+    } else if (isPaymentRequest) {
+      const amountMatch = lastMsg.match(/(?:\$|usd|mxn)?\s*(\d+(?:,\d{3})*(?:\.\d{2})?)/i);
+      const amount = amountMatch ? parseFloat(amountMatch[1].replace(',', '')) : 50;
+
+      const payResult = await executeTool('create_payment_link', {
+        amount,
+        currency: 'USD',
+        description: 'Anticipo de servicio / Apartado'
+      }, conversationContext);
+      allExecutedTools.push({ name: 'create_payment_link', args: { amount, description: 'Anticipo' }, result: payResult });
+
+      reply = `¡Con gusto! Aquí tienes el enlace oficial y seguro para realizar tu pago o anticipo:\n🔗 ${payResult.paymentUrl}\n\nTambién contamos con transferencias bancarias directas: ${payResult.bankTransferInfo}. En cuanto realices tu pago, envíanos el comprobante para confirmar de inmediato.`;
+
+    } else if (isSatisfaction) {
+      const reviewResult = await executeTool('collect_review', {
+        satisfactionLevel: 'alta',
+        reviewType: 'google_maps'
+      }, conversationContext);
+      allExecutedTools.push({ name: 'collect_review', args: { satisfactionLevel: 'alta', reviewType: 'google_maps' }, result: reviewResult });
+
+      reply = `¡Ha sido un verdadero placer ayudarte! Si estás satisfecho con nuestra atención, te agradeceríamos muchísimo dejarnos una breve reseña de 5 estrellas en nuestro perfil:\n⭐ ${reviewResult.reviewUrl}\n\n¡Muchas gracias por tu confianza y que tengas un excelente día!`;
+
+    } else if (cleanMsg.includes('humano') || cleanMsg.includes('asesor') || cleanMsg.includes('persona') || cleanMsg.includes('hablar con alguien')) {
       const handoffResult = await executeTool('escalate_to_human', {
         reason: 'Solicitud de atención humana directa',
         customerSummary: lastMsg,
         urgency: 'media'
       }, conversationContext);
-      allExecutedTools.push({ name: 'escalate_to_human', args: { reason: 'Solicitud cliente' }, result: handoffResult });
+      allExecutedTools.push({ name: 'escalate_to_human', args: { reason: 'Solicitud cliente', customerSummary: lastMsg }, result: handoffResult });
 
-      reply = `Entiendo perfectamente. He transferido tu conversación con un asesor humano de nuestro equipo. En un momento te responderá directamente. ¡Gracias por tu paciencia!`;
-    } else if (lastLower.includes('pagar') || lastLower.includes('link') || lastLower.includes('anticipo') || lastLower.includes('tarjeta') || lastLower.includes('transferencia')) {
-      const payResult = await executeTool('create_payment_link', {
-        amount: 50,
-        currency: 'USD',
-        description: 'Anticipo de servicio'
-      }, conversationContext);
-      allExecutedTools.push({ name: 'create_payment_link', args: { amount: 50, description: 'Anticipo' }, result: payResult });
+      reply = `Entiendo perfectamente. He transferido tu conversación con un asesor de nuestro equipo. En un momento te responderá directamente. ¡Gracias por tu paciencia!`;
 
-      reply = `¡Por supuesto! Puedes realizar tu pago o anticipo directamente a través de nuestro enlace seguro:\n🔗 ${payResult.paymentUrl}\n\nO mediante nuestros métodos oficiales: ${payResult.bankTransferInfo}. ¿Deseas que te envíe el comprobante a tu WhatsApp?`;
-    } else if (lastLower.includes('gracias') || lastLower.includes('excelente') || lastLower.includes('perfecto') || lastLower.includes('muy bien')) {
-      const reviewResult = await executeTool('collect_review', { satisfactionLevel: 'alta' }, conversationContext);
-      allExecutedTools.push({ name: 'collect_review', args: { satisfactionLevel: 'alta' }, result: reviewResult });
-
-      reply = `¡Ha sido un placer atenderte! Si te gustó nuestro servicio, te agradeceríamos muchísimo una breve reseña de 5 estrellas en nuestro perfil:\n⭐ ${reviewResult.reviewUrl}\n\n¡Que tengas un excelente día!`;
+    } else if (
+      cleanMsg.includes('precio') || cleanMsg.includes('costo') || cleanMsg.includes('cuanto') ||
+      cleanMsg.includes('cuesta') || cleanMsg.includes('cotiz') || cleanMsg.includes('tarifa') ||
+      cleanMsg.includes('pago') || cleanMsg.includes('metodo') || cleanMsg.includes('spei') ||
+      cleanMsg.includes('tarjeta') || cleanMsg.includes('efectivo') || cleanMsg.includes('anticipo') ||
+      cleanMsg.includes('catalogo') || cleanMsg.includes('servicio') || cleanMsg.includes('paquete') ||
+      cleanMsg.includes('afinacion') || cleanMsg.includes('freno') || cleanMsg.includes('diagnostico') ||
+      cleanMsg.includes('horario') || cleanMsg.includes('hora') || cleanMsg.includes('abren') ||
+      cleanMsg.includes('cierran') || cleanMsg.includes('abierto') || cleanMsg.includes('cerrado') ||
+      cleanMsg.includes('dia') || cleanMsg.includes('sabado') || cleanMsg.includes('domingo') ||
+      cleanMsg.includes('lunes') || cleanMsg.includes('atencion') || cleanMsg.includes('donde') ||
+      cleanMsg.includes('ubicacion') || cleanMsg.includes('direccion') || cleanMsg.includes('cobertura') ||
+      cleanMsg.includes('contacto') || cleanMsg.includes('telefono') || cleanMsg.includes('correo') ||
+      cleanMsg.includes('politica') || cleanMsg.includes('garantia') || cleanMsg.includes('reembolso') ||
+      cleanMsg.includes('factura') || cleanMsg.includes('faq') || cleanMsg.includes('pregunta') ||
+      cleanMsg.includes('duda') || cleanMsg.includes('inform')
+    ) {
+      const searchResult = await executeTool('search_kb', { query: lastMsg }, conversationContext);
+      allExecutedTools.push({ name: 'search_kb', args: { query: lastMsg }, result: searchResult });
+      
+      const kbItems = searchResult?.results || [];
+      if (kbItems.length > 0) {
+        const topContent = kbItems.map(k => k.content).join('\n\n');
+        reply = `¡Hola! Con gusto te comparto la información oficial de nuestro negocio:\n\n${topContent}\n\n¿En qué más te puedo ayudar?`;
+      } else {
+        const details = biz.services || 'servicios especializados';
+        reply = `¡Hola! Con gusto te comparto la información sobre nuestros precios y servicios:\n\n${details}\n\n¿Te gustaría que te coticemos formalmente o agendemos una cita?`;
+      }
     } else {
       reply = `¡Hola! Te doy la bienvenida a ${biz.name || 'nuestro negocio'}. Soy ${bot.name || 'tu asistente virtual'}. Puedo brindarte información sobre ${biz.services || 'nuestros servicios'}, horarios (${biz.hours || 'horario habitual'}), cotizaciones y agendar tu atención. ¿En qué te puedo ayudar hoy?`;
     }

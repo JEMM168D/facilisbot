@@ -279,6 +279,78 @@ async function runLiveTests() {
     if (!data.success) throw new Error(`KB delete failed: ${JSON.stringify(data)}`);
   });
 
+  // 8b. KB Interview Step-by-Step (6 steps)
+  console.log('\n[8b/16] Probando Entrevista Asistida KB (6 Pasos)...');
+  const expectedSections = [
+    'perfil_ubicacion.md',
+    'horarios_atencion.md',
+    'servicios_productos.md',
+    'precios_pagos.md',
+    'politicas_garantias.md',
+    'preguntas_frecuentes.md'
+  ];
+
+  for (let step = 1; step <= 6; step++) {
+    await test(`POST /api/kb/interview/step (Paso ${step})`, async () => {
+      const res = await fetch(`${BASE_URL}/api/kb/interview/step`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          botId: 'default',
+          step,
+          answers: {
+            businessName: 'Clínica Dental Sonrisa QA',
+            niche: 'Odontología integral y ortodoncia',
+            location: 'Paseo de la Reforma #456, CDMX',
+            coverage: 'Área Metropolitana',
+            phone: '+52 55 1234 5678',
+            email: 'citas@sonrisaqa.com',
+            hours: 'Lunes a Viernes de 9:00 AM a 7:00 PM',
+            weekendHours: 'Sábados de 9:00 AM a 2:00 PM',
+            responseTime: 'Inmediato por WhatsApp',
+            servicesText: '1. Limpieza con Ultrasonido\n2. Ortodoncia Invisible\n3. Implantes Dentales',
+            pricingText: 'Limpieza dental $600 MXN. Valoración inicial gratuita.',
+            paymentMethods: 'Tarjeta, Transferencia y Efectivo',
+            depositPolicy: 'Sin anticipo para valoraciones iniciales',
+            warranty: 'Garantía de 1 año en tratamientos de resina e implantes',
+            refundPolicy: 'Reprogramación sin costo con 24h de aviso',
+            billingPolicy: 'Facturación electrónica inmediata',
+            faqText: '¿Aceptan seguros de gastos médicos?\nSí, con las principales aseguradoras.'
+          }
+        })
+      });
+      if (!res.ok) throw new Error(`Status ${res.status}`);
+      const data = await res.json();
+      if (!data.success || data.savedSection !== expectedSections[step - 1]) {
+        throw new Error(`Interview step ${step} failed: ${JSON.stringify(data)}`);
+      }
+    });
+  }
+
+  // 8c. Web Scraper
+  console.log('\n[8c/16] Probando Auto-Scraper Web para KB...');
+  let scrapedFile = null;
+  await test('POST /api/kb/scrape (example.com)', async () => {
+    const res = await fetch(`${BASE_URL}/api/kb/scrape`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ botId: 'default', url: 'https://example.com' })
+    });
+    if (!res.ok) throw new Error(`Status ${res.status}`);
+    const data = await res.json();
+    if (!data.success || !data.filename) throw new Error(`Scrape failed: ${JSON.stringify(data)}`);
+    scrapedFile = data.filename;
+  });
+
+  if (scrapedFile) {
+    await test(`GET /api/kb/${scrapedFile}`, async () => {
+      const res = await fetch(`${BASE_URL}/api/kb/${scrapedFile}?bot_id=default`);
+      if (!res.ok) throw new Error(`Status ${res.status}`);
+      const data = await res.json();
+      if (!data.content || !data.content.includes('example.com')) throw new Error(`Invalid scraped content: ${JSON.stringify(data)}`);
+    });
+  }
+
   // 9. Test Connection
   console.log('\n[9/16] Probando Test Connection (API key validation)...');
   await test('POST /api/test/connection (Empty key - 400 expected)', async () => {

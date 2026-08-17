@@ -516,10 +516,10 @@ async function saveKbDocument() {
     await fetch(`/api/kb?bot_id=${encodeURIComponent(currentBotId)}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ filename, content })
+      body: JSON.stringify({ filename, content, botId: currentBotId })
     });
     showToast(`Archivo ${filename} guardado e indexado`);
-    loadKbFiles();
+    await loadKbFiles();
   } catch (err) {
     console.error('Error guardando documento KB:', err);
   }
@@ -542,7 +542,7 @@ async function deleteKbDocument() {
       method: 'DELETE'
     });
     showToast(`Archivo ${filename} eliminado`);
-    loadKbFiles();
+    await loadKbFiles();
   } catch (err) {
     console.error('Error eliminando KB:', err);
   }

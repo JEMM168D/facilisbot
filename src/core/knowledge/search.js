@@ -36,10 +36,11 @@ export class KnowledgeBase {
       const path = await import('path');
       const actualBaseDir = baseDir || process.cwd();
       this.kbDir = path.join(actualBaseDir, 'member', 'kb');
-      this.fallbackKbDir = path.join(actualBaseDir, 'kb');
+      this.fallbackKbDir = (botId === 'default') ? path.join(actualBaseDir, 'kb') : null;
       
       if (botId && botId !== 'default') {
         this.kbDir = path.join(actualBaseDir, 'member', 'bots', botId, 'kb');
+        this.fallbackKbDir = null;
       }
 
       await this.reloadFromFs();
@@ -283,6 +284,7 @@ export class KnowledgeBase {
       }
     });
 
+    clearKbCache(botId);
     return { success: true, filename };
   }
 
@@ -316,11 +318,23 @@ export class KnowledgeBase {
       }
     });
 
+    clearKbCache(botId);
     return true;
   }
 }
 
 const kbRegistry = new Map();
+
+/**
+ * Invalidate cached KnowledgeBase instance
+ */
+export function clearKbCache(botId = null) {
+  if (botId) {
+    kbRegistry.delete(botId);
+  } else {
+    kbRegistry.clear();
+  }
+}
 
 /**
  * Get or instantiate KnowledgeBase for a specific botId
@@ -335,5 +349,10 @@ export async function getKnowledgeBase(botId = 'default', storage = null, baseDi
   const kbPromise = KnowledgeBase.create(cleanId, storage, baseDir);
   kbRegistry.set(cleanId, kbPromise);
   
-  return await kbPromise;
+  try {
+    return await kbPromise;
+  } catch (err) {
+    kbRegistry.delete(cleanId);
+    throw err;
+  }
 }

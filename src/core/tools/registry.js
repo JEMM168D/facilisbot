@@ -279,9 +279,19 @@ export async function executeTool(name, args, context = {}) {
         status: 'nuevo'
       });
 
+      if (conversationId && storage && typeof storage.updateConversation === 'function') {
+        try {
+          await storage.updateConversation(conversationId, {
+            lead_id: lead.id,
+            user_name: args.name || undefined
+          });
+        } catch (e) {}
+      }
+
       return {
         success: true,
         leadId: lead.id,
+        lead,
         message: `🎯 Prospecto ${args.name || ''} (${args.phone || ''}) registrado en CRM con ID ${lead.id}.`
       };
     }

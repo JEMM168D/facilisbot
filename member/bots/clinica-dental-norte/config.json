@@ -1,0 +1,85 @@
+{
+  "bot": {
+    "id": "clinica-dental-norte",
+    "name": "Asistente Dental Norte",
+    "niche": "Clínica Odontológica y Estética Dental",
+    "language": "es",
+    "personality": "cálido, profesional, empático y claro en procedimientos dentales",
+    "greeting": "¡Hola! ¿En qué puedo ayudarte hoy?",
+    "fallbackMessage": "Disculpa, no entendí bien. ¿Podrías explicármelo de otra manera?",
+    "escalationMessage": "Un momento por favor, voy a transferir tu consulta a un miembro de nuestro equipo para que te atienda personalmente."
+  },
+  "business": {
+    "name": "Clínica Dental Norte",
+    "industry": "Salud y Odontología",
+    "description": "Especialistas en ortodoncia, implantes dentales, blanqueamiento y urgencias 24h.",
+    "services": "1. Ortodoncia Invisible e Invisalign\n2. Implantes Dentales de Titanio\n3. Limpieza y Blanqueamiento Láser\n4. Endodoncia y Extracciones sin dolor",
+    "hours": "Lunes a Sábado de 8:00 AM a 8:00 PM",
+    "location": "Av. Las Palmas #400, Piso 3, Zona Norte",
+    "phone": "+52 81 8300 9999",
+    "email": "citas@dentalnorte.com",
+    "website": "https://miempresa.com",
+    "paymentMethods": "Efectivo, Tarjetas (hasta 12 MSI), Transferencia SPEI",
+    "faq": []
+  },
+  "llm": {
+    "provider": "gemini",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": 0.4,
+    "maxTokens": 1000,
+    "systemPromptBonus": ""
+  },
+  "channels": {
+    "whatsapp": {
+      "enabled": false,
+      "provider": "cloud_api",
+      "phoneNumberId": "",
+      "accessToken": "",
+      "verifyToken": "yunque_verify_token_123",
+      "twilioAccountSid": "",
+      "twilioAuthToken": "",
+      "twilioPhoneNumber": ""
+    },
+    "telegram": {
+      "enabled": false,
+      "botToken": "",
+      "polling": false
+    },
+    "instagram": {
+      "enabled": false,
+      "pageId": "",
+      "accessToken": "",
+      "verifyToken": "yunque_meta_verify_123"
+    },
+    "messenger": {
+      "enabled": false,
+      "pageId": "",
+      "accessToken": "",
+      "verifyToken": "yunque_meta_verify_123"
+    },
+    "web": {
+      "enabled": true,
+      "title": "Chat de Atención",
+      "subtitle": "En línea 24/7",
+      "primaryColor": "#ff6a1f",
+      "position": "bottom-right"
+    }
+  },
+  "integrations": {
+    "calComApiKey": "",
+    "calComEventType": "",
+    "googleCalendarUrl": "",
+    "stripeApiKey": "",
+    "mercadoPagoToken": "",
+    "webhookUrl": "",
+    "humanEscalationAlertWebhook": ""
+  },
+  "server": {
+    "port": 3000,
+    "adminPassword": "admin123",
+    "baseUrl": "http://localhost:3000"
+  },
+  "_accessCode": "dental2026",
+  "accessCode": "dental2026",
+  "pin": "dental2026"
+}
