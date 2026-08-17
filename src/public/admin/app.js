@@ -343,6 +343,17 @@ async function loadConversations(silent = false) {
   }
 }
 
+function scrollChatToBottom(smooth = false) {
+  const msgContainer = document.getElementById('chatMessagesBody');
+  if (!msgContainer) return;
+  setTimeout(() => {
+    msgContainer.scrollTo({
+      top: msgContainer.scrollHeight,
+      behavior: smooth ? 'smooth' : 'auto'
+    });
+  }, 40);
+}
+
 async function selectConversation(convId) {
   activeConversationId = convId;
   document.querySelectorAll('.conv-item').forEach(i => {
@@ -376,7 +387,7 @@ async function selectConversation(convId) {
       msgContainer.appendChild(bubble);
     });
 
-    msgContainer.scrollTop = msgContainer.scrollHeight;
+    scrollChatToBottom(false);
   } catch (err) {
     console.error('Error seleccionando conversación:', err);
   }
@@ -435,7 +446,7 @@ async function refreshInboxSilently() {
           `;
           msgContainer.appendChild(bubble);
         });
-        msgContainer.scrollTop = msgContainer.scrollHeight;
+        scrollChatToBottom(true);
       }
     } else if (convs.length > 0 && !activeConversationId) {
       selectConversation(convs[0].id);
