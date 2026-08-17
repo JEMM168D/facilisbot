@@ -223,11 +223,34 @@ export class UniversalLlmEngine {
       }))
     }];
 
-    // Build Gemini history
-    const contents = messages.map(m => ({
+    // Build sanitized Gemini history (must strictly alternate user/model and start with user)
+    const rawContents = messages.map(m => ({
       role: m.role === 'assistant' ? 'model' : 'user',
-      parts: [{ text: m.content || '' }]
+      parts: [{ text: (m.content || '').trim() || ' ' }]
     }));
+
+    const contents = [];
+    for (const item of rawContents) {
+      if (contents.length === 0) {
+        if (item.role === 'user') {
+          contents.push(item);
+        }
+      } else {
+        const last = contents[contents.length - 1];
+        if (last.role === item.role) {
+          last.parts.push(...item.parts);
+        } else {
+          contents.push(item);
+        }
+      }
+    }
+
+    if (contents.length === 0 && messages.length > 0) {
+      contents.push({
+        role: 'user',
+        parts: [{ text: messages[messages.length - 1]?.content || 'Hola' }]
+      });
+    }
 
     let currentModel = model;
     let turnCount = 0;

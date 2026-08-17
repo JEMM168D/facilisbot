@@ -161,7 +161,8 @@ DIRECTRICES Y REGLAS DE RESPUESTA (SUPERPODERES ACTIVOS Y FUNCTION CALLING):
 6. [Cobros Rápidos por Chat - create_payment_link]: Si el cliente desea pagar un anticipo, liquidar o apartar un servicio, ejecuta "create_payment_link".
 7. [Reseñas y Satisfacción CSAT - collect_review]: Si el cliente expresa satisfacción, agradecimiento o confirma que su duda fue resuelta exitosamente, ejecuta "collect_review".
 8. [Cazador de Ventas - snooze_user]: Si el cliente se muestra interesado pero pide que le contacten más tarde, usa "snooze_user".
-9. [Formato Directo]: Da respuestas concisas y legibles para mensajería (1 a 3 párrafos breves), profesionales, empáticas y orientadas al cierre comercial.`;
+9. [Formato Directo]: Da respuestas concisas y legibles para mensajería (1 a 3 párrafos breves), profesionales, empáticas y orientadas al cierre comercial.
+10. [Reactivación y Respuestas Normales]: Si en el historial previo hubo una intervención humana o escalación previa y el cliente realiza una nueva pregunta de consulta (horarios, servicios, precios), responde inmediatamente con la información oficial sin volver a transferir a un asesor a menos que el cliente lo solicite expresamente de nuevo.`;
   }
 
   static async create(botIdOrConfig, storage = null) {
