@@ -437,6 +437,52 @@ export function createServer(customConfig = null, customStorage = null) {
         });
       }
 
+      // ── MEDIA LIBRARY (fotos / PDF / archivos del negocio) ──
+      if (pathname.startsWith('/media/')) {
+        const parts = pathname.slice('/media/'.length).split('/');
+        const mediaBotId = decodeURIComponent(parts[0]);
+        const filename = decodeURIComponent(parts.slice(1).join('/'));
+        if (!filename || !mediaBotId) return sendJson(res, 404, { error: 'Archivo no encontrado' });
+
+        const media = await storage.getMedia(mediaBotId, filename);
+        if (!media) return sendJson(res, 404, { error: 'Archivo no encontrado' });
+
+        const buffer = Buffer.from(media.dataBase64, 'base64');
+        res.writeHead(200, {
+          'Content-Type': media.contentType || 'application/octet-stream',
+          'Cache-Control': 'public, max-age=86400',
+          'Access-Control-Allow-Origin': '*'
+        });
+        res.end(buffer);
+        return;
+      }
+
+      // List media library
+      if (pathname === '/api/media' && req.method === 'GET') {
+        const files = await storage.listMedia(reqBotId);
+        return sendJson(res, 200, { files, botId: reqBotId });
+      }
+
+      // Upload media (base64 JSON)
+      if (pathname === '/api/media' && req.method === 'POST') {
+        const body = await parseJsonBody(req);
+        const targetBotId = body.botId || reqBotId || 'default';
+        const filename = (body.filename || '').replace(/[^\w.\- ]/g, '').trim();
+        if (!filename || !body.dataBase64) return sendJson(res, 400, { error: 'filename y dataBase64 son requeridos' });
+        const contentType = body.contentType || '';
+        await storage.saveMedia(targetBotId, filename, body.dataBase64, contentType);
+        clearEngineCache(targetBotId);
+        return sendJson(res, 201, { success: true, filename, botId: targetBotId, url: `/media/${targetBotId}/${encodeURIComponent(filename)}` });
+      }
+
+      // Delete media file
+      if (pathname.match(/^\/api\/media\/.+$/) && req.method === 'DELETE') {
+        const filename = decodeURIComponent(pathname.slice('/api/media/'.length));
+        await storage.deleteMedia(reqBotId, filename);
+        clearEngineCache(reqBotId);
+        return sendJson(res, 200, { success: true, filename, botId: reqBotId });
+      }
+
       // ── 12 SUPERPOWERS & ANALYTICS APIs ──
       if (pathname === '/api/reports/daily' && (req.method === 'GET' || req.method === 'POST')) {
         const botCfg = await loadConfig(reqBotId, storage);
@@ -541,6 +587,10 @@ export function createServer(customConfig = null, customStorage = null) {
         }
         if (req.method === 'POST') {
           const body = await parseJsonBody(req);
+          const engine = await getBotEngine(webhookBotId, storage);
+          botCfg._engine = engine;
+          botCfg._storage = storage;
+          botCfg._baseUrl = `http://${req.headers.host || 'localhost:3000'}`;
           const result = await WhatsAppHandler.handleCloudApiWebhook(body, botCfg);
           return sendJson(res, result.status, result);
         }
@@ -550,6 +600,10 @@ export function createServer(customConfig = null, customStorage = null) {
         const webhookBotId = pathname.startsWith('/webhook/telegram/') ? pathname.split('/')[3] : reqBotId;
         const botCfg = await loadConfig(webhookBotId, storage);
         const update = await parseJsonBody(req);
+        const engine = await getBotEngine(webhookBotId, storage);
+        botCfg._engine = engine;
+        botCfg._storage = storage;
+        botCfg._baseUrl = `http://${req.headers.host || 'localhost:3000'}`;
         const result = await TelegramHandler.handleWebhook(update, botCfg);
         return sendJson(res, result.status, result);
       }
@@ -565,6 +619,10 @@ export function createServer(customConfig = null, customStorage = null) {
         }
         if (req.method === 'POST') {
           const body = await parseJsonBody(req);
+          const engine = await getBotEngine(webhookBotId, storage);
+          botCfg._engine = engine;
+          botCfg._storage = storage;
+          botCfg._baseUrl = `http://${req.headers.host || 'localhost:3000'}`;
           const result = await MetaDMsHandler.handleWebhook(body, botCfg);
           return sendJson(res, result.status, result);
         }

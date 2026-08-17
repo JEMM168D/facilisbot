@@ -43,6 +43,15 @@ export class TelegramHandler {
         });
       }
 
+      // Send media attachments (photos, PDFs, docs)
+      if (response.media && response.media.length > 0 && botToken) {
+        const baseUrl = config._baseUrl || config.server?.baseUrl || '';
+        for (const item of response.media) {
+          const absoluteUrl = item.url.startsWith('http') ? item.url : baseUrl + item.url;
+          await this.sendMedia({ botToken, chatId, mediaUrl: absoluteUrl, contentType: item.contentType, caption: item.caption || '' });
+        }
+      }
+
       return { status: 200, success: true, response };
     } catch (err) {
       console.error('[Telegram] Error procesando update:', err.message);
@@ -80,6 +89,32 @@ export class TelegramHandler {
       return true;
     } catch (err) {
       console.error('[Telegram] Error enviando mensaje:', err.message);
+      return false;
+    }
+  }
+
+  /**
+   * Send outbound media via Telegram Bot API (photo or document)
+   */
+  static async sendMedia({ botToken, chatId, mediaUrl, contentType = '', caption = '' }) {
+    const isImage = (contentType || '').startsWith('image/');
+    const method = isImage ? 'sendPhoto' : 'sendDocument';
+    const url = `https://api.telegram.org/bot${botToken}/${method}`;
+    const body = isImage
+      ? { chat_id: chatId, photo: mediaUrl, caption }
+      : { chat_id: chatId, document: mediaUrl, caption };
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      if (!res.ok) {
+        console.error('[Telegram] Error enviando media:', await res.text());
+      }
+      return res.ok;
+    } catch (err) {
+      console.error('[Telegram] Error enviando media:', err.message);
       return false;
     }
   }

@@ -64,9 +64,7 @@
   const historyKey = 'facilisbot_widget_history_' + botId;
   const savedHistory = JSON.parse(localStorage.getItem(historyKey) || '[]');
   savedHistory.forEach(m => {
-    const msgEl = document.createElement('div');
-    msgEl.className = `yunque-msg ${m.role === 'user' ? 'yunque-msg-user' : 'yunque-msg-bot'}`;
-    msgEl.textContent = m.text;
+    const msgEl = renderMessage(m);
     body.insertBefore(msgEl, typing);
   });
   if (savedHistory.length > 0) body.scrollTop = body.scrollHeight;
@@ -75,6 +73,37 @@
     savedHistory.push({ role, text, time: Date.now() });
     if (savedHistory.length > 30) savedHistory.shift();
     try { localStorage.setItem(historyKey, JSON.stringify(savedHistory)); } catch(e) {}
+  }
+
+  // Render a message bubble, resolving media markers like [media:filename|http...]
+  function renderMessage(m) {
+    const isUser = m.role === 'user';
+    const msgEl = document.createElement('div');
+    msgEl.className = `yunque-msg ${isUser ? 'yunque-msg-user' : 'yunque-msg-bot'}`;
+    const mediaMatch = /^\[media:(.+?)\|(http[^|\]]+)\]$/.exec((m.text || '').trim());
+    if (mediaMatch) {
+      const [, filename, url] = mediaMatch;
+      const isImage = /\.(png|jpe?g|gif|webp|svg|bmp|avif)$/i.test(url);
+      if (isImage) {
+        const img = document.createElement('img');
+        img.src = url;
+        img.alt = filename;
+        img.style.cssText = 'max-width:220px; border-radius:10px; display:block; cursor:pointer;';
+        img.onclick = () => window.open(url, '_blank');
+        msgEl.appendChild(img);
+      } else {
+        const link = document.createElement('a');
+        link.href = url;
+        link.target = '_blank';
+        link.rel = 'noopener';
+        link.textContent = `📎 ${filename}`;
+        link.style.cssText = 'color:inherit; text-decoration:underline;';
+        msgEl.appendChild(link);
+      }
+    } else {
+      msgEl.textContent = m.text;
+    }
+    return msgEl;
   }
 
   // Toggle open
@@ -136,6 +165,18 @@
         body.scrollTop = body.scrollHeight;
         appendToHistory('assistant', data.reply);
       }
+
+      // Add media attachments (images / PDFs)
+      if (data.media && data.media.length > 0) {
+        data.media.forEach(item => {
+          const absoluteUrl = item.url.startsWith('http') ? item.url : serverOrigin + item.url;
+          const filename = item.filename || item.url.split('/').pop() || 'archivo';
+          const mediaEl = renderMessage({ role: 'assistant', text: `[media:${filename}|${absoluteUrl}]` });
+          body.insertBefore(mediaEl, typing);
+          body.scrollTop = body.scrollHeight;
+          appendToHistory('assistant', `[media:${filename}|${absoluteUrl}]`);
+        });
+      }
     } catch (err) {
       typing.style.display = 'none';
       const errMsg = document.createElement('div');
@@ -164,10 +205,7 @@
           savedHistory.length = 0;
 
           serverMessages.forEach(m => {
-            const isUser = m.role === 'user';
-            const msgEl = document.createElement('div');
-            msgEl.className = `yunque-msg ${isUser ? 'yunque-msg-user' : 'yunque-msg-bot'}`;
-            msgEl.textContent = m.content;
+            const msgEl = renderMessage({ role: m.role, text: m.content });
             body.insertBefore(msgEl, typing);
             savedHistory.push({ role: m.role, text: m.content, time: m.created_at || Date.now() });
           });

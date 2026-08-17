@@ -64,6 +64,21 @@ export class MetaDMsHandler {
         });
       }
 
+      // Send media attachments (photos, PDFs, docs)
+      if (response.media && response.media.length > 0 && accessToken) {
+        const baseUrl = config._baseUrl || config.server?.baseUrl || '';
+        for (const item of response.media) {
+          const absoluteUrl = item.url.startsWith('http') ? item.url : baseUrl + item.url;
+          await this.sendMedia({
+            accessToken,
+            recipientId: senderId,
+            mediaUrl: absoluteUrl,
+            contentType: item.contentType,
+            caption: item.caption || ''
+          });
+        }
+      }
+
       return { status: 200, success: true, response };
     } catch (err) {
       console.error('[Meta DMs] Error procesando evento:', err.message);
@@ -90,5 +105,32 @@ export class MetaDMsHandler {
       console.error('[Meta DMs] Error enviando mensaje:', err);
     }
     return res.ok;
+  }
+
+  /**
+   * Send media message via Meta Graph API (Instagram/Messenger)
+   */
+  static async sendMedia({ accessToken, recipientId, mediaUrl, contentType = '', caption = '' }) {
+    const isImage = (contentType || '').startsWith('image/');
+    const url = `https://graph.facebook.com/v21.0/me/messages?access_token=${accessToken}`;
+    const payload = isImage
+      ? { attachment: { type: 'image', payload: { url: mediaUrl } } }
+      : { attachment: { type: 'file', payload: { url: mediaUrl } } };
+
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ recipient: { id: recipientId }, message: payload })
+      });
+      if (!res.ok) {
+        const err = await res.text();
+        console.error('[Meta DMs] Error enviando media:', err);
+      }
+      return res.ok;
+    } catch (err) {
+      console.error('[Meta DMs] Error enviando media:', err.message);
+      return false;
+    }
   }
 }

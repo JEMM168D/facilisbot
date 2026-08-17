@@ -76,6 +76,22 @@ export class WhatsAppHandler {
         });
       }
 
+      // Send media attachments (photos, PDFs, docs)
+      if (response.media && response.media.length > 0 && accessToken && phoneNumberId) {
+        const baseUrl = config._baseUrl || config.server?.baseUrl || '';
+        for (const item of response.media) {
+          const absoluteUrl = item.url.startsWith('http') ? item.url : baseUrl + item.url;
+          await this.sendCloudApiMedia({
+            phoneNumberId,
+            accessToken,
+            to: fromNumber,
+            mediaUrl: absoluteUrl,
+            contentType: item.contentType,
+            caption: item.caption || ''
+          });
+        }
+      }
+
       return { status: 200, success: true, response };
     } catch (err) {
       console.error('[WhatsApp Cloud API] Error procesando mensaje:', err.message);
@@ -108,6 +124,43 @@ export class WhatsAppHandler {
       console.error('[WhatsApp Cloud API] Error enviando mensaje:', err);
     }
     return res.ok;
+  }
+
+  /**
+   * Send WhatsApp media message via Meta Cloud API (image/document)
+   */
+  static async sendCloudApiMedia({ phoneNumberId, accessToken, to, mediaUrl, contentType = '', caption = '' }) {
+    const isImage = (contentType || '').startsWith('image/');
+    const type = isImage ? 'image' : 'document';
+    const mediaKey = isImage ? 'image' : 'document';
+    const mediaPayload = isImage
+      ? { link: mediaUrl, caption }
+      : { link: mediaUrl, caption, filename: decodeURIComponent(mediaUrl.split('/').pop() || 'archivo') };
+
+    const url = `https://graph.facebook.com/v21.0/${phoneNumberId}/messages`;
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          messaging_product: 'whatsapp',
+          recipient_type: 'individual',
+          to,
+          type,
+          [mediaKey]: mediaPayload
+        })
+      });
+      if (!res.ok) {
+        console.error('[WhatsApp Cloud API] Error enviando media:', await res.text());
+      }
+      return res.ok;
+    } catch (err) {
+      console.error('[WhatsApp Cloud API] Error enviando media:', err.message);
+      return false;
+    }
   }
 
   /**

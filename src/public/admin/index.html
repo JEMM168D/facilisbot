@@ -82,6 +82,9 @@
       <li class="nav-item" data-tab="kb" onclick="navigateTo('kb')">
         <div class="nav-left"><span>📚</span> <span>Conocimiento</span></div>
       </li>
+      <li class="nav-item" data-tab="media" onclick="navigateTo('media')">
+        <div class="nav-left"><span>📎</span> <span>Biblioteca Media</span></div>
+      </li>
       <li class="nav-item" data-tab="conexiones" onclick="navigateTo('conexiones')">
         <div class="nav-left"><span>🔌</span> <span>Conexiones</span></div>
       </li>
@@ -780,6 +783,37 @@
             </div>
           </div>
           <textarea id="kbEditor" class="form-control" style="height:360px; font-family:var(--font-mono); font-size:12px;" placeholder="Escribe aquí el contenido en Markdown..."></textarea>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================================================== -->
+    <!-- MEDIA LIBRARY (fotos / PDF / archivos del negocio)        -->
+    <!-- ======================================================== -->
+    <section id="view-media" class="view-section">
+      <div class="section-header">
+        <div>
+          <h1>Biblioteca de Media</h1>
+          <p>Sube fotos, PDFs, menús y catálogos que tu bot puede enviar a los clientes cuando los pidan.</p>
+        </div>
+      </div>
+
+      <div class="panel-card" style="padding:16px; margin-bottom:16px;">
+        <h4 style="font-size:11px; text-transform:uppercase; color:var(--text-dim); margin-bottom:10px;">Subir archivo</h4>
+        <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+          <input type="file" id="mediaUploadInput" class="form-control" style="flex:1; min-width:220px;" multiple accept=".jpg,.jpeg,.png,.gif,.webp,.svg,.bmp,.avif,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip">
+          <button class="btn btn-primary btn-sm" onclick="uploadMediaFiles()">⬆️ Subir</button>
+        </div>
+        <div id="mediaUploadStatus" style="margin-top:8px; font-size:12px; color:var(--text-muted);"></div>
+        <p style="margin-top:10px; font-size:12px; color:var(--text-dim);">
+          💡 El bot enviará estos archivos cuando el cliente pida "el menú", "catálogo", "fotos", "un PDF", etc. Usa nombres claros como <code>menu.pdf</code> o <code>fotos-servicios.jpg</code>.
+        </p>
+      </div>
+
+      <div class="panel-card" style="padding:16px;">
+        <h4 style="font-size:11px; text-transform:uppercase; color:var(--text-dim); margin-bottom:10px;">Archivos disponibles</h4>
+        <div id="mediaFilesList" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap:12px;">
+          <div style="color:var(--text-dim); font-size:12px;">Cargando...</div>
         </div>
       </div>
     </section>

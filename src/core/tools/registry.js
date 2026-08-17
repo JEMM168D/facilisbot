@@ -2,6 +2,43 @@
  * FacilisBot 12 Superpowers Suite · Tool Definitions & Execution Engine
  * Fully compatible with Gemini 3.5, Claude Sonnet 5, OpenAI GPT-5.6, and Grok 4.6 Function Calling.
  */
+
+/**
+ * Guess a MIME content type from a filename extension
+ */
+function guessContentType(filename = '') {
+  const ext = (filename.split('.').pop() || '').toLowerCase();
+  const map = {
+    png: 'image/png',
+    jpg: 'image/jpeg',
+    jpeg: 'image/jpeg',
+    gif: 'image/gif',
+    webp: 'image/webp',
+    svg: 'image/svg+xml',
+    bmp: 'image/bmp',
+    avif: 'image/avif',
+    pdf: 'application/pdf',
+    doc: 'application/msword',
+    docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    xls: 'application/vnd.ms-excel',
+    xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    ppt: 'application/vnd.ms-powerpoint',
+    pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    mp4: 'video/mp4',
+    webm: 'video/webm',
+    mov: 'video/quicktime',
+    mp3: 'audio/mpeg',
+    wav: 'audio/wav',
+    ogg: 'audio/ogg',
+    txt: 'text/plain',
+    csv: 'text/csv',
+    md: 'text/markdown',
+    json: 'application/json',
+    zip: 'application/zip'
+  };
+  return map[ext] || 'application/octet-stream';
+}
+
 export const TOOL_DEFINITIONS = [
   // 1. 🛡️ Blindaje anti-invento (RAG Estricto)
   {
@@ -162,6 +199,20 @@ export const TOOL_DEFINITIONS = [
         reason: { type: 'string', description: 'Comportamiento anómalo detectado' }
       },
       required: ['reason']
+    }
+  },
+
+  // 12. 📎 Envío de Media (fotos / PDF / catálogos)
+  {
+    name: 'send_media',
+    description: 'Envía al cliente un archivo de la biblioteca de media del negocio (menú en PDF, fotos de servicios, catálogo, flyer, brochure, documento de precios, etc.). Usa esta herramienta cuando el cliente pida el menú, catálogo, fotos, un PDF, precios en documento o cualquier archivo que el negocio tenga disponible.',
+    parameters: {
+      type: 'object',
+      properties: {
+        filename: { type: 'string', description: 'Nombre del archivo en la biblioteca (ej. menu.pdf, fotos-servicios.jpg, catalogo.pdf)' },
+        caption: { type: 'string', description: 'Texto breve que acompaña el archivo (opcional)' }
+      },
+      required: ['filename']
     }
   }
 ];
@@ -469,6 +520,58 @@ export async function executeTool(name, args, context = {}) {
         success: true,
         flagged: true,
         message: '🛡️ Conversación marcada como sospechosa.'
+      };
+    }
+
+    // 12. Envío de Media (fotos / PDF / catálogos)
+    case 'send_media': {
+      const requested = (args.filename || '').trim();
+      if (!requested) {
+        return { success: false, error: 'Se requiere el nombre del archivo a enviar.' };
+      }
+
+      let media = null;
+      try {
+        if (storage && typeof storage.getMedia === 'function') {
+          media = await storage.getMedia(botId, requested);
+        }
+      } catch (e) {}
+
+      // Fuzzy match if exact filename not found
+      if (!media) {
+        try {
+          if (storage && typeof storage.listMedia === 'function') {
+            const files = await storage.listMedia(botId);
+            const match = files.find(f => {
+              const clean = (f.filename || '').toLowerCase();
+              const q = requested.toLowerCase();
+              return clean === q || clean.includes(q) || q.includes(clean.replace(/\.[^.]+$/, ''));
+            });
+            if (match) {
+              media = await storage.getMedia(botId, match.filename);
+            }
+          }
+        } catch (e) {}
+      }
+
+      if (!media) {
+        return {
+          success: false,
+          error: `No se encontró el archivo "${requested}" en la biblioteca.`,
+          availableFiles: null
+        };
+      }
+
+      const contentType = media.contentType || guessContentType(media.filename);
+      const mediaUrl = `/media/${botId}/${encodeURIComponent(media.filename)}`;
+
+      return {
+        success: true,
+        mediaUrl,
+        filename: media.filename,
+        contentType,
+        caption: args.caption || '',
+        message: `📎 Enviando ${media.filename}...`
       };
     }
 

@@ -580,6 +580,57 @@ ${cleanText}
       }
 
       // ══════════════════════════════════════════════════
+      // MEDIA LIBRARY (fotos / PDF / archivos del negocio)
+      // ══════════════════════════════════════════════════
+
+      // Public file serving for channels and widget (no auth needed)
+      if (pathname.startsWith('/media/')) {
+        const parts = pathname.slice('/media/'.length).split('/');
+        const mediaBotId = decodeURIComponent(parts[0]);
+        const filename = decodeURIComponent(parts.slice(1).join('/'));
+        if (!filename || !mediaBotId) return json({ error: 'Archivo no encontrado' }, 404);
+
+        const media = await storage.getMedia(mediaBotId, filename);
+        if (!media) return json({ error: 'Archivo no encontrado' }, 404);
+
+        const bytes = Uint8Array.from(atob(media.dataBase64), c => c.charCodeAt(0));
+        return new Response(bytes, {
+          status: 200,
+          headers: {
+            'Content-Type': media.contentType || 'application/octet-stream',
+            'Cache-Control': 'public, max-age=86400',
+            ...CORS
+          }
+        });
+      }
+
+      // List media library
+      if (pathname === '/api/media' && request.method === 'GET') {
+        const files = await storage.listMedia(reqBotId);
+        return json({ files, botId: reqBotId });
+      }
+
+      // Upload media (base64 JSON)
+      if (pathname === '/api/media' && request.method === 'POST') {
+        const body = await request.json();
+        const targetBotId = body.botId || reqBotId || 'default';
+        const filename = (body.filename || '').replace(/[^\w.\- ]/g, '').trim();
+        if (!filename || !body.dataBase64) return json({ error: 'filename y dataBase64 son requeridos' }, 400);
+        const contentType = body.contentType || '';
+        await storage.saveMedia(targetBotId, filename, body.dataBase64, contentType);
+        clearEngineCache(targetBotId);
+        return json({ success: true, filename, botId: targetBotId, url: `/media/${targetBotId}/${encodeURIComponent(filename)}` }, 201);
+      }
+
+      // Delete media file
+      if (pathname.match(/^\/api\/media\/.+$/) && request.method === 'DELETE') {
+        const filename = decodeURIComponent(pathname.slice('/api/media/'.length));
+        await storage.deleteMedia(reqBotId, filename);
+        clearEngineCache(reqBotId);
+        return json({ success: true, filename, botId: reqBotId });
+      }
+
+      // ══════════════════════════════════════════════════
       // 12 SUPERPOWERS & ANALYTICS APIs
       // ══════════════════════════════════════════════════
 
@@ -756,6 +807,7 @@ ${leads.length === 0 ? '_No se registraron nuevos prospectos en este periodo._' 
           // Pass engine to handler for processing
           botCfg._engine = engine;
           botCfg._storage = storage;
+          botCfg._baseUrl = url.origin;
           
           const result = await WhatsAppHandler.handleCloudApiWebhook(body, botCfg);
           return json(result, result.status || 200);
@@ -776,6 +828,7 @@ ${leads.length === 0 ? '_No se registraron nuevos prospectos en este periodo._' 
         const engine = await getBotEngine(webhookBotId, storage);
         botCfg._engine = engine;
         botCfg._storage = storage;
+        botCfg._baseUrl = url.origin;
         
         const result = await TelegramHandler.handleWebhook(update, botCfg);
         return json(result, result.status || 200);
@@ -792,6 +845,10 @@ ${leads.length === 0 ? '_No se registraron nuevos prospectos en este periodo._' 
         }
         if (request.method === 'POST') {
           const body = await request.json();
+          const engine = await getBotEngine(webhookBotId, storage);
+          botCfg._engine = engine;
+          botCfg._storage = storage;
+          botCfg._baseUrl = url.origin;
           const result = await MetaDMsHandler.handleWebhook(body, botCfg);
           return json(result, result.status || 200);
         }

@@ -708,6 +708,39 @@ export class UniversalLlmEngine {
       reply = `Entiendo perfectamente. He transferido tu conversación con un asesor de nuestro equipo. En un momento te responderá directamente. ¡Gracias por tu paciencia!`;
 
     } else if (
+      cleanMsg.includes('menu') || cleanMsg.includes('catalogo') || cleanMsg.includes('foto') ||
+      cleanMsg.includes('fotos') || cleanMsg.includes('pdf') || cleanMsg.includes('archivo') ||
+      cleanMsg.includes('documento') || cleanMsg.includes('flyer') || cleanMsg.includes('brochure') ||
+      cleanMsg.includes('folleto') || cleanMsg.includes('imagen') || cleanMsg.includes('imagenes') ||
+      (cleanMsg.includes('envia') && (cleanMsg.includes('menu') || cleanMsg.includes('catalogo') || cleanMsg.includes('pdf') || cleanMsg.includes('foto'))) ||
+      (cleanMsg.includes('manda') && (cleanMsg.includes('menu') || cleanMsg.includes('catalogo') || cleanMsg.includes('pdf') || cleanMsg.includes('foto')))
+    ) {
+      // Try to match a media file from the bot's library
+      let mediaResult = null;
+      try {
+        const storage = conversationContext.storage;
+        const botId = conversationContext.botId || 'default';
+        if (storage && typeof storage.listMedia === 'function') {
+          const files = await storage.listMedia(botId);
+          const keyword = cleanMsg.includes('menu') ? 'menu'
+            : cleanMsg.includes('catalogo') ? 'catalogo'
+            : cleanMsg.includes('foto') || cleanMsg.includes('fotos') || cleanMsg.includes('imagen') ? 'fotos'
+            : null;
+          const match = keyword ? files.find(f => (f.filename || '').toLowerCase().includes(keyword)) : null;
+          if (match) {
+            mediaResult = await executeTool('send_media', { filename: match.filename }, conversationContext);
+            allExecutedTools.push({ name: 'send_media', args: { filename: match.filename }, result: mediaResult });
+          }
+        }
+      } catch (e) {}
+
+      if (mediaResult?.success) {
+        reply = `¡Claro! Aquí tienes ${mediaResult.filename}:`;
+      } else {
+        reply = `¡Claro! Con gusto te comparto el material. En breve te hago llegar el archivo por este medio o puedes solicitarlo con un asesor.`;
+      }
+
+    } else if (
       cleanMsg.includes('precio') || cleanMsg.includes('costo') || cleanMsg.includes('cuanto') ||
       cleanMsg.includes('cuesta') || cleanMsg.includes('cotiz') || cleanMsg.includes('tarifa') ||
       cleanMsg.includes('pago') || cleanMsg.includes('metodo') || cleanMsg.includes('spei') ||

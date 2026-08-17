@@ -15,6 +15,43 @@ const COST_RATES = {
 };
 
 /**
+ * Guess a MIME content type from a filename extension
+ */
+function guessContentType(filename = '') {
+  const ext = (filename.split('.').pop() || '').toLowerCase();
+  const map = {
+    png: 'image/png',
+    jpg: 'image/jpeg',
+    jpeg: 'image/jpeg',
+    gif: 'image/gif',
+    webp: 'image/webp',
+    svg: 'image/svg+xml',
+    bmp: 'image/bmp',
+    avif: 'image/avif',
+    pdf: 'application/pdf',
+    doc: 'application/msword',
+    docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    xls: 'application/vnd.ms-excel',
+    xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    ppt: 'application/vnd.ms-powerpoint',
+    pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    mp4: 'video/mp4',
+    webm: 'video/webm',
+    mov: 'video/quicktime',
+    mp3: 'audio/mpeg',
+    wav: 'audio/wav',
+    ogg: 'audio/ogg',
+    txt: 'text/plain',
+    csv: 'text/csv',
+    md: 'text/markdown',
+    json: 'application/json',
+    zip: 'application/zip',
+    mp3: 'audio/mpeg'
+  };
+  return map[ext] || 'application/octet-stream';
+}
+
+/**
  * Cloudflare Workers Storage Adapter
  * Uses D1 (env.DB) for structured data and KV (env.KV) for Knowledge Base.
  */
@@ -345,6 +382,59 @@ class CloudflareStorageAdapter {
       const currentList = await this.listKBDocuments(botId);
       const cleanList = currentList.filter(f => f !== filename && f !== '__manifest__');
       await this.kv.put(`kb:${botId}:__manifest__`, JSON.stringify(cleanList));
+    } catch (e) {}
+  }
+
+  // --- Media Library (KV) ---
+
+  async saveMedia(botId, filename, dataBase64, contentType = 'application/octet-stream') {
+    if (!this.kv) return;
+    const key = `media:${botId}:${filename}`;
+    await this.kv.put(key, dataBase64, { metadata: { contentType, filename } });
+
+    // Update manifest
+    try {
+      const currentList = await this.listMedia(botId);
+      if (!currentList.find(f => f.filename === filename)) {
+        currentList.push({ filename, contentType, size: Math.floor((dataBase64.length * 3) / 4) });
+      }
+      await this.kv.put(`media:${botId}:__manifest__`, JSON.stringify(currentList));
+    } catch (e) {}
+  }
+
+  async getMedia(botId, filename) {
+    if (!this.kv || filename === '__manifest__') return null;
+    const data = await this.kv.get(`media:${botId}:${filename}`);
+    if (data === null) return null;
+    const meta = await this.kv.getWithMetadata(`media:${botId}:${filename}`);
+    return {
+      filename,
+      dataBase64: data,
+      contentType: meta?.metadata?.contentType || guessContentType(filename)
+    };
+  }
+
+  async listMedia(botId) {
+    if (!this.kv) return [];
+    try {
+      const manifest = await this.kv.get(`media:${botId}:__manifest__`, { type: 'json' });
+      if (manifest && Array.isArray(manifest)) return manifest;
+    } catch (e) {}
+
+    const prefix = `media:${botId}:`;
+    const result = await this.kv.list({ prefix });
+    return (result.keys || [])
+      .filter(k => !k.name.endsWith('__manifest__'))
+      .map(k => ({ filename: k.name.replace(prefix, ''), contentType: '', size: k.metadata?.size || 0 }));
+  }
+
+  async deleteMedia(botId, filename) {
+    if (!this.kv || filename === '__manifest__') return;
+    await this.kv.delete(`media:${botId}:${filename}`);
+    try {
+      const currentList = await this.listMedia(botId);
+      const cleanList = currentList.filter(f => f.filename !== filename);
+      await this.kv.put(`media:${botId}:__manifest__`, JSON.stringify(cleanList));
     } catch (e) {}
   }
 
@@ -775,6 +865,63 @@ class LocalStorageAdapter {
     try {
       if (this.fs.existsSync(botKbPath)) {
         await this.fsPromises.unlink(botKbPath);
+      }
+    } catch (e) {}
+  }
+
+  // --- Media Library (fs) ---
+
+  async saveMedia(botId, filename, dataBase64, contentType = 'application/octet-stream') {
+    await this._initPaths();
+    const mediaDir = this.path.join(this.baseDir, 'bots', botId, 'media');
+    if (!this.fs.existsSync(mediaDir)) {
+      await this.fsPromises.mkdir(mediaDir, { recursive: true });
+    }
+    const buffer = Buffer.from(dataBase64, 'base64');
+    await this.fsPromises.writeFile(this.path.join(mediaDir, filename), buffer);
+  }
+
+  async getMedia(botId, filename) {
+    await this._initPaths();
+    const mediaPath = this.path.join(this.baseDir, 'bots', botId, 'media', filename);
+    try {
+      if (!this.fs.existsSync(mediaPath)) return null;
+      const buffer = await this.fsPromises.readFile(mediaPath);
+      return {
+        filename,
+        dataBase64: buffer.toString('base64'),
+        contentType: guessContentType(filename)
+      };
+    } catch (e) {
+      return null;
+    }
+  }
+
+  async listMedia(botId) {
+    await this._initPaths();
+    const mediaDir = this.path.join(this.baseDir, 'bots', botId, 'media');
+    try {
+      if (!this.fs.existsSync(mediaDir)) return [];
+      const files = await this.fsPromises.readdir(mediaDir);
+      return files.map(filename => {
+        let size = 0;
+        try {
+          const stat = this.fs.statSync(this.path.join(mediaDir, filename));
+          size = stat.size;
+        } catch (e) {}
+        return { filename, contentType: guessContentType(filename), size };
+      });
+    } catch (e) {
+      return [];
+    }
+  }
+
+  async deleteMedia(botId, filename) {
+    await this._initPaths();
+    const mediaPath = this.path.join(this.baseDir, 'bots', botId, 'media', filename);
+    try {
+      if (this.fs.existsSync(mediaPath)) {
+        await this.fsPromises.unlink(mediaPath);
       }
     } catch (e) {}
   }

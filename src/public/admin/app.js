@@ -96,6 +96,7 @@ function navigateTo(tab) {
     'resenas': 'BANDEJA / RESEÑAS',
     'campanas': 'BANDEJA / CAMPAÑAS',
     'kb': 'MI AGENTE / CONOCIMIENTO',
+    'media': 'MI AGENTE / BIBLIOTECA MEDIA',
     'conexiones': 'MI AGENTE / CONEXIONES',
     'simulator': 'MI AGENTE / SIMULADOR',
     'settings': 'MI AGENTE / AJUSTES'
@@ -110,6 +111,7 @@ function navigateTo(tab) {
   if (tab === 'leads') loadLeads();
   if (tab === 'tickets') loadTickets();
   if (tab === 'kb') loadKbFiles();
+  if (tab === 'media') loadMediaFiles();
   if (tab === 'settings') loadConfig();
   if (tab === 'conexiones') setupWidgetSnippet();
 }
@@ -777,6 +779,98 @@ async function deleteKbDocument() {
     await loadKbFiles();
   } catch (err) {
     console.error('Error eliminando KB:', err);
+  }
+}
+
+// ================= MEDIA LIBRARY =================
+async function loadMediaFiles() {
+  try {
+    const res = await fetch(`/api/media?bot_id=${encodeURIComponent(currentBotId)}`);
+    const data = await res.json();
+    const listEl = document.getElementById('mediaFilesList');
+    if (!listEl) return;
+    const files = data.files || [];
+
+    if (files.length === 0) {
+      listEl.innerHTML = `<div style="grid-column:1/-1; color:var(--text-dim); font-size:12px;">No hay archivos subidos. Sube un menú en PDF, fotos o catálogos arriba.</div>`;
+      return;
+    }
+
+    listEl.innerHTML = '';
+    files.forEach(f => {
+      const url = `/media/${encodeURIComponent(currentBotId)}/${encodeURIComponent(f.filename)}`;
+      const isImage = /\.(png|jpe?g|gif|webp|svg|bmp|avif)$/i.test(f.filename || '');
+      const size = f.size ? `${(f.size / 1024).toFixed(1)} KB` : '';
+      const card = document.createElement('div');
+      card.style.cssText = 'border:1px solid var(--border-color); border-radius:10px; overflow:hidden; background:var(--bg-card);';
+      card.innerHTML = `
+        ${isImage ? `<img src="${url}" alt="${escapeHtml(f.filename)}" style="width:100%; height:100px; object-fit:cover; display:block; cursor:pointer;" onclick="window.open('${url}','_blank')">` : `<div style="height:100px; display:flex; align-items:center; justify-content:center; font-size:30px; background:rgba(255,255,255,0.03);">📄</div>`}
+        <div style="padding:8px;">
+          <div style="font-size:11px; font-weight:600; color:var(--text-main); word-break:break-all;">${escapeHtml(f.filename)}</div>
+          <div style="font-size:10px; color:var(--text-dim);">${escapeHtml(f.contentType || '')} ${size ? '· ' + size : ''}</div>
+          <div style="display:flex; gap:6px; margin-top:8px;">
+            <button class="btn btn-secondary btn-sm" style="flex:1; font-size:10px; padding:3px;" onclick="copyMediaName('${escapeHtml(f.filename)}')">📋 Nombre</button>
+            <button class="btn btn-secondary btn-sm" style="flex:1; font-size:10px; padding:3px; color:var(--accent-red);" onclick="deleteMediaFile('${escapeHtml(f.filename)}')">🗑️</button>
+          </div>
+        </div>
+      `;
+      listEl.appendChild(card);
+    });
+  } catch (err) {
+    console.error('Error cargando media:', err);
+  }
+}
+
+async function uploadMediaFiles() {
+  const input = document.getElementById('mediaUploadInput');
+  const statusEl = document.getElementById('mediaUploadStatus');
+  if (!input || !input.files || input.files.length === 0) {
+    if (statusEl) statusEl.textContent = 'Selecciona al menos un archivo.';
+    return;
+  }
+
+  statusEl.textContent = 'Subiendo archivos...';
+  let uploaded = 0;
+
+  for (const file of input.files) {
+    const reader = new FileReader();
+    const dataBase64 = await new Promise(resolve => {
+      reader.onload = () => resolve(String(reader.result).split(',')[1] || '');
+      reader.readAsDataURL(file);
+    });
+
+    const filename = file.name.replace(/[^\w.\- ]/g, '').trim();
+    if (!filename) continue;
+
+    const res = await fetch(`/api/media?bot_id=${encodeURIComponent(currentBotId)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ filename, dataBase64, contentType: file.type || '', botId: currentBotId })
+    });
+    if (res.ok) uploaded++;
+  }
+
+  input.value = '';
+  statusEl.textContent = `✅ ${uploaded} archivo(s) subido(s).`;
+  showToast(`${uploaded} archivo(s) subidos a la biblioteca`);
+  await loadMediaFiles();
+}
+
+function copyMediaName(filename) {
+  navigator.clipboard?.writeText(filename).catch(() => {});
+  showToast(`Nombre copiado: ${filename}`);
+}
+
+async function deleteMediaFile(filename) {
+  if (!confirm(`¿Eliminar ${filename} de la biblioteca?`)) return;
+  try {
+    await fetch(`/api/media/${encodeURIComponent(filename)}?bot_id=${encodeURIComponent(currentBotId)}`, {
+      method: 'DELETE'
+    });
+    showToast(`Archivo ${filename} eliminado`);
+    await loadMediaFiles();
+  } catch (err) {
+    console.error('Error eliminando media:', err);
   }
 }
 

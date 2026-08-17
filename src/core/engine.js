@@ -120,6 +120,17 @@ export class BotEngine {
 
     const replyText = llmResponse.content || this.config.bot?.fallbackMessage || '¿En qué más te puedo ayudar?';
 
+    // Collect media attachments triggered by send_media tool
+    const executedTools = llmResponse.tools || llmResponse.executedTools || [];
+    const media = executedTools
+      .filter(t => t.name === 'send_media' && t.result?.success && t.result.mediaUrl)
+      .map(t => ({
+        url: t.result.mediaUrl,
+        filename: t.result.filename,
+        contentType: t.result.contentType,
+        caption: t.result.caption || ''
+      }));
+
     // 9. Save assistant response
     await this.storage.addMessage({
       conversationId: conversation.id,
@@ -135,6 +146,7 @@ export class BotEngine {
       botId: this.botId,
       status: conversation.status,
       leadId: conversation.leadId,
+      media: media.length > 0 ? media : null,
       tools: llmResponse.tools || llmResponse.executedTools || null,
       tokensUsed: llmResponse.tokensUsed,
       provider: llmResponse.provider,
@@ -173,7 +185,8 @@ DIRECTRICES Y REGLAS DE RESPUESTA (SUPERPODERES ACTIVOS Y FUNCTION CALLING):
 7. [Reseñas y Satisfacción CSAT - collect_review]: Si el cliente expresa satisfacción, agradecimiento o confirma que su duda fue resuelta exitosamente, ejecuta "collect_review".
 8. [Cazador de Ventas - snooze_user]: Si el cliente se muestra interesado pero pide que le contacten más tarde, usa "snooze_user".
 9. [Formato Directo]: Da respuestas concisas y legibles para mensajería (1 a 3 párrafos breves), profesionales, empáticas y orientadas al cierre comercial.
-10. [Reactivación y Respuestas Normales]: Si en el historial previo hubo una intervención humana o escalación previa y el cliente realiza una nueva pregunta de consulta (horarios, servicios, precios), responde inmediatamente con la información oficial sin volver a transferir a un asesor a menos que el cliente lo solicite expresamente de nuevo.`;
+10. [Reactivación y Respuestas Normales]: Si en el historial previo hubo una intervención humana o escalación previa y el cliente realiza una nueva pregunta de consulta (horarios, servicios, precios), responde inmediatamente con la información oficial sin volver a transferir a un asesor a menos que el cliente lo solicite expresamente de nuevo.
+11. [Media y Archivos - send_media]: Si el cliente pide el menú, catálogo, fotos de servicios, un PDF, precios en documento, brochure, flyer o cualquier archivo del negocio, ejecuta "send_media" indicando el nombre del archivo de la biblioteca (ej. menu.pdf, catalogo.pdf, fotos-servicios.jpg). Confirma envío al cliente con un mensaje breve. Si la biblioteca no tiene el archivo, avisa que lo compartirán por otro medio.`;
   }
 
   static async create(botIdOrConfig, storage = null) {
