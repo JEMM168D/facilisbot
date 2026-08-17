@@ -304,10 +304,22 @@ export function createServer(customConfig = null, customStorage = null) {
             .replace(/\n\s+\n/g, '\n\n')
             .trim();
           
-          const maxLen = 8000;
-          const trimmedContent = cleanText.length > maxLen ? cleanText.slice(0, maxLen) + '...\n\n[Contenido truncado]' : cleanText;
-          const markdown = `# Información Extraída de ${title}\n**Fuente:** ${targetUrl}\n**Descripción:** ${metaDesc || 'Sin descripción meta'}\n\n---\n\n## Contenido del Sitio Web\n${trimmedContent}\n`;
-          const filename = 'web_' + new URL(targetUrl).hostname.replace(/[^a-zA-Z0-9]/g, '_') + '.md';
+          const markdown = `# Información Extraída de ${title}\n**Fuente:** ${targetUrl}\n**Descripción:** ${metaDesc || 'Sin descripción meta'}\n\n---\n\n## Contenido del Sitio Web\n${cleanText}\n`;
+          
+          // Generar nombre de archivo único por ruta/variante del dominio
+          const parsedUrl = new URL(targetUrl);
+          const hostSlug = parsedUrl.hostname.replace(/^www\./, '').replace(/[^a-zA-Z0-9]/g, '_');
+          const pathSlug = parsedUrl.pathname
+            .split('/')
+            .filter(Boolean)
+            .join('_')
+            .replace(/[^a-zA-Z0-9_-]/g, '_')
+            .slice(0, 60);
+          
+          let fileVariant = pathSlug ? `${hostSlug}_${pathSlug}` : hostSlug;
+          fileVariant = fileVariant.replace(/_+/g, '_').replace(/^_|_$/g, '');
+          const filename = `web_${fileVariant}.md`;
+
           const currentKb = await getKnowledgeBase(targetBotId, storage);
           await currentKb.saveDocument(targetBotId, filename, markdown, storage);
           clearEngineCache(targetBotId);
@@ -319,7 +331,7 @@ export function createServer(customConfig = null, customStorage = null) {
             title,
             botId: targetBotId,
             length: markdown.length,
-            preview: markdown.slice(0, 400) + '...'
+            preview: markdown.slice(0, 600) + '...'
           });
         } catch (err) {
           return sendJson(res, 400, { success: false, error: 'Error al escanear la página: ' + err.message });
