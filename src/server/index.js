@@ -196,6 +196,11 @@ export function createServer(customConfig = null, customStorage = null) {
           role: 'assistant',
           content: body.text || ''
         });
+
+        // Human has taken over the conversation: silence the bot so the human handles it
+        if (conv) {
+          await storage.updateConversationStatus(convId, 'human');
+        }
         return sendJson(res, 200, { success: true, message: msg });
       }
 

@@ -290,6 +290,11 @@ export default {
           content: replyText
         });
 
+        // Human has taken over the conversation: silence the bot so the human handles it
+        if (conv) {
+          await storage.updateConversationStatus(convId, 'human');
+        }
+
         const botCfg = await loadConfig(botId, storage);
 
         // Outbound messaging to Telegram if applicable

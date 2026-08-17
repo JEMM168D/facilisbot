@@ -374,8 +374,8 @@ function updateChatStatusControls(conversation) {
 
   const status = conversation?.status || 'active';
 
-  if (status === 'escalated') {
-    statusPill.textContent = '⚠️ Asesor Humano (Bot Pausado)';
+  if (status === 'escalated' || status === 'human') {
+    statusPill.textContent = status === 'human' ? '🤝 Asesor Humano (Bot Silenciado)' : '⚠️ Asesor Humano (Bot Pausado)';
     statusPill.style.borderColor = 'rgba(239, 68, 68, 0.5)';
     statusPill.style.color = 'var(--accent-red)';
     statusPill.style.display = 'inline-block';
@@ -536,7 +536,7 @@ async function refreshInboxSilently() {
         item.onclick = () => selectConversation(c.id);
 
         const channelEmoji = c.channel === 'whatsapp' ? '💬' : c.channel === 'telegram' ? '✈️' : '🌐';
-        const isEscalated = c.status === 'escalated';
+        const isEscalated = c.status === 'escalated' || c.status === 'human';
         const statusBadge = isEscalated ? '<span class="badge-pro" style="color:var(--accent-red); margin-left:6px; font-size:8px;">⚠️ ESCALADO</span>' : '';
         const timeStr = new Date(c.updated_at || c.created_at || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 

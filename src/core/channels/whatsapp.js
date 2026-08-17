@@ -129,6 +129,9 @@ export class WhatsAppHandler {
     });
 
     // Return TwiML XML response
+    if (!response.reply) {
+      return { status: 200, headers: { 'Content-Type': 'text/xml' }, body: '<Response></Response>' };
+    }
     const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Message>${this.escapeXml(response.reply)}</Message>

@@ -127,13 +127,15 @@
 
       typing.style.display = 'none';
 
-      // Add bot bubble
-      const botMsg = document.createElement('div');
-      botMsg.className = 'yunque-msg yunque-msg-bot';
-      botMsg.textContent = data.reply || 'Gracias por tu mensaje.';
-      body.insertBefore(botMsg, typing);
-      body.scrollTop = body.scrollHeight;
-      appendToHistory('assistant', data.reply || 'Gracias por tu mensaje.');
+      // Add bot bubble only if there is an actual reply (silent during human takeover)
+      if (data.reply) {
+        const botMsg = document.createElement('div');
+        botMsg.className = 'yunque-msg yunque-msg-bot';
+        botMsg.textContent = data.reply;
+        body.insertBefore(botMsg, typing);
+        body.scrollTop = body.scrollHeight;
+        appendToHistory('assistant', data.reply);
+      }
     } catch (err) {
       typing.style.display = 'none';
       const errMsg = document.createElement('div');

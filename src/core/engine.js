@@ -65,7 +65,18 @@ export class BotEngine {
       }
     }
 
-    // 3. If conversation is escalated to human, return notification unless human resolved/reactivated it
+    // 3. If a human has taken over the conversation (or bot is paused),
+    // stay silent and let the human handle it directly
+    if (conversation.status === 'human' || conversation.status === 'paused') {
+      return {
+        reply: null,
+        conversationId: conversation.id,
+        status: conversation.status,
+        isHumanEscalated: true
+      };
+    }
+
+    // 4. If conversation is escalated to human, return notification unless human resolved/reactivated it
     if (conversation.status === 'escalated') {
       const escalationNotice = this.config.bot?.escalationMessage ||
         'Tu conversación está siendo atendida por un asesor humano. En breve te responderá directamente.';
@@ -77,20 +88,20 @@ export class BotEngine {
       };
     }
 
-    // 4. Retrieve RAG context from Knowledge Base
+    // 5. Retrieve RAG context from Knowledge Base
     const kbContext = this.kb.getContextForQuery(text);
 
-    // 5. Build dynamic system prompt
+    // 6. Build dynamic system prompt
     const systemPrompt = this.buildSystemPrompt();
 
-    // 6. Retrieve recent message history
+    // 7. Retrieve recent message history
     const rawHistory = await this.storage.getMessages(conversation.id, 12);
     const messages = rawHistory.map(m => ({
       role: m.role,
       content: m.content
     }));
 
-    // 7. Call LLM Engine with tools and context
+    // 8. Call LLM Engine with tools and context
     const llmResponse = await this.llm.generateResponse({
       systemPrompt,
       messages,
@@ -109,7 +120,7 @@ export class BotEngine {
 
     const replyText = llmResponse.content || this.config.bot?.fallbackMessage || '¿En qué más te puedo ayudar?';
 
-    // 8. Save assistant response
+    // 9. Save assistant response
     await this.storage.addMessage({
       conversationId: conversation.id,
       role: 'assistant',
