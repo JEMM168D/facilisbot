@@ -370,6 +370,20 @@ export default {
         return json({ success: deleted, botId: reqBotId });
       }
 
+      // Vaciar toda la Base de Conocimiento de un Bot
+      if (pathname === '/api/kb/clear' && request.method === 'POST') {
+        const body = await request.json().catch(() => ({}));
+        const targetBotId = body.botId || reqBotId || 'default';
+        const currentKb = await getKnowledgeBase(targetBotId, storage);
+        const docs = currentKb.listDocuments();
+        for (const doc of docs) {
+          await currentKb.deleteDocument(targetBotId, doc.filename, storage);
+        }
+        clearEngineCache(targetBotId);
+        clearKbCache(targetBotId);
+        return json({ success: true, count: docs.length, botId: targetBotId, message: 'Base de conocimiento vaciada con éxito' });
+      }
+
       // Auto-Scraper Web para Base de Conocimiento
       if (pathname === '/api/kb/scrape' && request.method === 'POST') {
         const body = await request.json();

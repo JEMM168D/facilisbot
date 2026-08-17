@@ -548,6 +548,27 @@ async function deleteKbDocument() {
   }
 }
 
+async function clearAllKbDocuments() {
+  if (!confirm('⚠️ ¿Estás seguro de que deseas VACIAR toda la Base de Conocimiento de este bot? Todos los archivos Markdown se eliminarán para que puedas comenzar de cero.')) return;
+
+  try {
+    const res = await fetch(`/api/kb/clear`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ botId: currentBotId })
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast('🗑️ Base de Conocimiento vaciada por completo');
+      document.getElementById('kbCurrentFileName').textContent = 'Selecciona un archivo...';
+      document.getElementById('kbEditor').value = '';
+      await loadKbFiles();
+    }
+  } catch (err) {
+    showToast('❌ Error vaciando KB: ' + err.message);
+  }
+}
+
 // ================= 7. CONNECTIONS =================
 function setupWidgetSnippet() {
   const origin = window.location.origin;

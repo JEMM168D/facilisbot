@@ -258,6 +258,20 @@ export function createServer(customConfig = null, customStorage = null) {
         return sendJson(res, 200, { success: deleted, botId: targetBotId });
       }
 
+      // Vaciar toda la Base de Conocimiento
+      if (pathname === '/api/kb/clear' && req.method === 'POST') {
+        const body = await parseJsonBody(req).catch(() => ({}));
+        const targetBotId = body.botId || reqBotId || 'default';
+        const currentKb = await getKnowledgeBase(targetBotId, storage);
+        const docs = currentKb.listDocuments();
+        for (const doc of docs) {
+          await currentKb.deleteDocument(targetBotId, doc.filename, storage);
+        }
+        clearEngineCache(targetBotId);
+        clearKbCache(targetBotId);
+        return sendJson(res, 200, { success: true, count: docs.length, botId: targetBotId });
+      }
+
       // ── AUTO-SCRAPER WEB PARA KB ──
       if (pathname === '/api/kb/scrape' && req.method === 'POST') {
         const body = await parseJsonBody(req);
