@@ -167,6 +167,85 @@ export const TOOL_DEFINITIONS = [
 ];
 
 /**
+ * Dispatch real-time notifications to the business owner/client
+ * via Telegram, WhatsApp, or Webhook.
+ */
+export async function sendOwnerNotification({
+  botId,
+  type, // 'lead' | 'escalation' | 'vigilante' | 'appointment'
+  title,
+  message,
+  data = {},
+  config = {}
+}) {
+  const notif = config.notifications || config.integrations || {};
+  const channels = config.channels || {};
+
+  // 1. Telegram Owner Alert
+  const tgToken = notif.telegramBotToken || channels.telegram?.botToken;
+  const tgChatId = notif.telegramChatId || notif.ownerTelegramChatId;
+  if (tgToken && tgChatId) {
+    try {
+      const text = `🔔 *${title}*\n\n${message}`;
+      fetch(`https://api.telegram.org/bot${tgToken}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: tgChatId,
+          text,
+          parse_mode: 'Markdown'
+        })
+      }).catch(() => {});
+    } catch (e) {}
+  }
+
+  // 2. WhatsApp Owner Alert
+  const waPhoneId = notif.whatsappPhoneId || channels.whatsapp?.phoneNumberId;
+  const waToken = notif.whatsappAccessToken || channels.whatsapp?.accessToken;
+  const waOwnerPhone = notif.whatsappOwnerPhone || notif.ownerWhatsapp || config.business?.phone;
+  if (waPhoneId && waToken && waOwnerPhone) {
+    try {
+      const cleanPhone = waOwnerPhone.replace(/[^0-9]/g, '');
+      if (cleanPhone.length >= 10) {
+        fetch(`https://graph.facebook.com/v21.0/${waPhoneId}/messages`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${waToken}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            messaging_product: 'whatsapp',
+            recipient_type: 'individual',
+            to: cleanPhone,
+            type: 'text',
+            text: { preview_url: false, body: `🔔 *${title}*\n\n${message}` }
+          })
+        }).catch(() => {});
+      }
+    } catch (e) {}
+  }
+
+  // 3. Webhook Dispatch (Zapier, Make, n8n, custom webhook)
+  const webhookUrl = notif.webhookUrl || notif.notificationWebhook || notif.vigilanteWebhook || notif.humanEscalationAlertWebhook;
+  if (webhookUrl) {
+    try {
+      fetch(webhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          event: type,
+          botId,
+          title,
+          message,
+          data,
+          timestamp: new Date().toISOString()
+        })
+      }).catch(() => {});
+    } catch (e) {}
+  }
+}
+
+/**
  * Tool Execution Handler
  */
 export async function executeTool(name, args, context = {}) {
@@ -191,26 +270,14 @@ export async function executeTool(name, args, context = {}) {
 
     // 2. Vigilante
     case 'alert_vigilante': {
-      const alertPayload = {
-        event: 'vigilante_alert',
+      await sendOwnerNotification({
         botId,
-        conversationId,
-        channel,
-        reason: args.reason,
-        sentimentScore: args.sentimentScore,
-        summary: args.summary,
-        timestamp: new Date().toISOString()
-      };
-
-      if (config.integrations?.vigilanteWebhook) {
-        try {
-          fetch(config.integrations.vigilanteWebhook, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(alertPayload)
-          }).catch(() => {});
-        } catch (e) {}
-      }
+        type: 'vigilante',
+        title: '🚨 ALERTA VIGILANTE: Cliente en riesgo',
+        message: `*Motivo:* ${args.reason}\n*Severidad:* ${args.sentimentScore}\n*Resumen:* ${args.summary || 'Sin resumen'}`,
+        data: { conversationId, channel, ...args },
+        config
+      });
 
       return {
         success: true,
@@ -237,24 +304,14 @@ export async function executeTool(name, args, context = {}) {
         await storage.updateConversationStatus(conversationId, 'escalated');
       }
 
-      if (config.integrations?.humanEscalationAlertWebhook) {
-        try {
-          fetch(config.integrations.humanEscalationAlertWebhook, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              event: 'human_escalation',
-              botId,
-              conversationId,
-              channel,
-              reason: args.reason,
-              summary: args.customerSummary,
-              urgency: args.urgency || 'media',
-              timestamp: new Date().toISOString()
-            })
-          }).catch(() => {});
-        } catch (e) {}
-      }
+      await sendOwnerNotification({
+        botId,
+        type: 'escalation',
+        title: '📞 SOLICITUD DE ASESOR HUMANO (HANDOFF)',
+        message: `*Motivo:* ${args.reason}\n*Urgencia:* ${args.urgency || 'media'}\n*Resumen:* ${args.customerSummary}`,
+        data: { conversationId, channel, ...args },
+        config
+      });
 
       return {
         success: true,
@@ -287,6 +344,15 @@ export async function executeTool(name, args, context = {}) {
           });
         } catch (e) {}
       }
+
+      await sendOwnerNotification({
+        botId,
+        type: 'lead',
+        title: '🎯 NUEVO LEAD CAPTURADO',
+        message: `*Nombre:* ${args.name || 'Sin nombre'}\n*Teléfono:* ${args.phone || 'No especificado'}\n*Email:* ${args.email || '-'}\n*Interés:* ${args.interest}\n*Presupuesto:* ${args.budget || 'Por cotizar'}`,
+        data: { leadId: lead.id, ...lead },
+        config
+      });
 
       return {
         success: true,
@@ -335,6 +401,15 @@ export async function executeTool(name, args, context = {}) {
       const calLink = config.integrations?.calComApiKey
         ? `https://cal.com/${config.integrations.calComEventType || 'agenda'}`
         : null;
+
+      await sendOwnerNotification({
+        botId,
+        type: 'appointment',
+        title: '📅 NUEVA CITA / TURNO SOLICITADO',
+        message: `*Cliente:* ${args.customerName}\n*Servicio:* ${args.serviceName}\n*Fecha/Hora:* ${args.preferredDate}\n*Teléfono:* ${args.phone || 'No especificado'}`,
+        data: { leadId: lead.id, ...args },
+        config
+      });
 
       return {
         success: true,

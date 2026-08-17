@@ -731,6 +731,19 @@ async function saveTelegramChannel() {
   showToast('Conexión de Telegram guardada');
 }
 
+async function saveOwnerNotifications() {
+  const whatsappOwnerPhone = document.getElementById('notifOwnerWhatsapp')?.value.trim() || '';
+  const telegramChatId = document.getElementById('notifTelegramChatId')?.value.trim() || '';
+  const webhookUrl = document.getElementById('notifWebhookUrl')?.value.trim() || '';
+
+  await updateConfigSection('notifications', {
+    whatsappOwnerPhone,
+    telegramChatId,
+    webhookUrl
+  });
+  showToast('🔔 Canales de alerta al celular guardados');
+}
+
 // ================= 8. SIMULATOR (Live Testing & Tool Calling) =================
 async function sendSimMessage() {
   const input = document.getElementById('simInput');
@@ -881,6 +894,14 @@ async function loadConfig() {
 
     document.getElementById('waPhoneId').value = currentConfig.channels?.whatsapp?.phoneNumberId || '';
     document.getElementById('tgBotToken').value = currentConfig.channels?.telegram?.botToken || '';
+
+    const notif = currentConfig.notifications || currentConfig.integrations || {};
+    const notifWa = document.getElementById('notifOwnerWhatsapp');
+    if (notifWa) notifWa.value = notif.whatsappOwnerPhone || notif.ownerWhatsapp || currentConfig.business?.phone || '';
+    const notifTg = document.getElementById('notifTelegramChatId');
+    if (notifTg) notifTg.value = notif.telegramChatId || notif.ownerTelegramChatId || '';
+    const notifHook = document.getElementById('notifWebhookUrl');
+    if (notifHook) notifHook.value = notif.webhookUrl || notif.notificationWebhook || '';
   } catch (err) {
     console.error('Error cargando configuración:', err);
   }

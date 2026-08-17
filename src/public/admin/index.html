@@ -534,6 +534,35 @@
           </div>
           <button class="btn btn-secondary btn-sm" onclick="copyChatApiEndpoint()">📋 Copiar Endpoint API</button>
         </div>
+
+        <!-- Alertas y Notificaciones al Dueño / Cliente -->
+        <div class="connection-card" style="border-color: rgba(226, 93, 30, 0.4); grid-column: 1 / -1;">
+          <div class="connection-header">
+            <div class="connection-brand">
+              <span style="font-size: 20px;">🚨</span>
+              <span>Alertas Instantáneas al Celular (Dueño / Ventas)</span>
+            </div>
+            <span class="node-badge-active">12 Superpoderes</span>
+          </div>
+          <div class="connection-desc">
+            Recibe alertas inmediatas a tu celular cuando se capture un <strong>Lead</strong>, alguien pida un <strong>Asesor Humano</strong>, un cliente esté <strong>Enojado (Vigilante)</strong> o agende una <strong>Cita</strong>.
+          </div>
+          <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:12px; margin-top:10px;">
+            <div class="form-group">
+              <label>📱 WhatsApp del Dueño (recibir alertas):</label>
+              <input type="text" id="notifOwnerWhatsapp" class="form-control" placeholder="+52 33 1234 5678">
+            </div>
+            <div class="form-group">
+              <label>✈️ Telegram Chat ID (recibir alertas):</label>
+              <input type="text" id="notifTelegramChatId" class="form-control" placeholder="ej. 123456789 (desde @userinfobot)">
+            </div>
+            <div class="form-group">
+              <label>🔗 Webhook de Alertas (Make / Zapier / n8n):</label>
+              <input type="text" id="notifWebhookUrl" class="form-control" placeholder="https://hook.make.com/...">
+            </div>
+          </div>
+          <button class="btn btn-primary btn-sm" style="margin-top:10px;" onclick="saveOwnerNotifications()">💾 Guardar Canales de Alerta</button>
+        </div>
       </div>
     </section>
 
