@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { kb } from '../src/core/knowledge/search.js';
+import { getKnowledgeBase } from '../src/core/knowledge/search.js';
 
 /**
  * Skill: /clonar
@@ -78,7 +78,8 @@ ${cleanText.slice(0, 4000)}
 `;
 
     fs.writeFileSync(filePath, docContent, 'utf8');
-    kb.reload();
+    const kb = await getKnowledgeBase();
+    await kb.reloadFromFs();
 
     console.log(`  \x1b[32m✓\x1b[0m Información extraída y guardada en: \x1b[36m${filePath}\x1b[0m`);
     console.log(`  \x1b[32m✓\x1b[0m Base de conocimiento actualizada e indexada automáticamente.\n`);

@@ -8,7 +8,7 @@ import { loadConfig } from '../src/core/config.js';
  * Generates an executive monthly value report for the business owner or client.
  */
 export async function generateMonthlyReport() {
-  const config = loadConfig();
+  const config = await loadConfig();
   const metrics = db.getOverviewMetrics();
   const leads = db.listLeads({ limit: 1000 }).leads;
 

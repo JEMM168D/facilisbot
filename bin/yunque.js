@@ -6,7 +6,7 @@ import readline from 'readline';
 import { fileURLToPath } from 'url';
 import { loadConfig, saveConfig, DEFAULT_CONFIG } from '../src/core/config.js';
 import { createServer } from '../src/server/index.js';
-import { kb } from '../src/core/knowledge/search.js';
+import { getKnowledgeBase } from '../src/core/knowledge/search.js';
 import { db } from '../src/core/storage/db.js';
 import { UniversalLlmEngine } from '../src/core/llm/index.js';
 
@@ -251,7 +251,7 @@ async function runDoctor() {
   let issues = 0;
 
   // 1. Check member/config.local.json or bot.config.json
-  const config = loadConfig();
+  const config = await loadConfig();
   if (config.bot?.name) {
     console.log(`  ${colors.green}✓${colors.reset} Configuración cargada (${colors.cyan}${config.bot.name}${colors.reset} - giro: ${colors.orange}${config.bot.niche}${colors.reset})`);
   } else {
@@ -260,7 +260,8 @@ async function runDoctor() {
   }
 
   // 2. Check Knowledge Base
-  kb.reload();
+  const kb = await getKnowledgeBase();
+  await kb.reloadFromFs();
   const docs = kb.listDocuments();
   if (docs.length > 0) {
     console.log(`  ${colors.green}✓${colors.reset} Base de Conocimiento activa (${docs.length} documentos indexados)`);
@@ -360,7 +361,7 @@ async function runUpdate() {
 
   // 2. Verification of integrity
   console.log(`  2. ${colors.cyan}Verificando integridad de datos del negocio...${colors.reset}`);
-  const config = loadConfig();
+  const config = await loadConfig();
   console.log(`     ${colors.green}✓${colors.reset} Configuración preservada (${config.bot?.name || 'Bot'})`);
   console.log(`     ${colors.green}✓${colors.reset} Base de Conocimiento preservada (member/kb/)`);
   console.log(`     ${colors.green}✓${colors.reset} Base de datos de clientes intacta (data/bot_database.json)`);

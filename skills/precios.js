@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { kb } from '../src/core/knowledge/search.js';
+import { getKnowledgeBase } from '../src/core/knowledge/search.js';
 
 /**
  * Skill: /precios
@@ -24,7 +24,8 @@ export async function updatePrices(itemUpdates = []) {
 
   const updatedContent = currentContent + newEntry;
   fs.writeFileSync(targetFile, updatedContent, 'utf8');
-  kb.reload();
+  const kb = await getKnowledgeBase();
+  await kb.reloadFromFs();
 
   console.log(`  \x1b[32m✓\x1b[0m Precio actualizado en \x1b[36m${targetFile}\x1b[0m`);
   console.log(`  \x1b[32m✓\x1b[0m Entrada añadida:\x1b[0m ${newEntry}\n`);

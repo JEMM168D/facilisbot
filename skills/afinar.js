@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { db } from '../src/core/storage/db.js';
-import { kb } from '../src/core/knowledge/search.js';
+import { getKnowledgeBase } from '../src/core/knowledge/search.js';
 import { loadConfig } from '../src/core/config.js';
 
 /**
@@ -15,6 +15,7 @@ export async function runTuning(queryFilter = null) {
   const userMessages = messages.filter(m => m.role === 'user');
 
   const unansweredQueries = [];
+  const kb = await getKnowledgeBase();
 
   for (const msg of userMessages) {
     const text = msg.content;

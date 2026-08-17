@@ -8,7 +8,7 @@ import { loadConfig } from '../src/core/config.js';
  * Segments leads and crafts high-converting re-engagement copy with 24h compliance checks.
  */
 export async function generateCampaign({ segment = 'seguimiento', promoOffer = '15% de descuento especial' } = {}) {
-  const config = loadConfig();
+  const config = await loadConfig();
   const leads = db.listLeads({ limit: 1000 }).leads;
 
   const targetLeads = leads.filter(l => l.status === segment || segment === 'all');

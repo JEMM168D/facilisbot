@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { db } from '../src/core/storage/db.js';
-import { kb } from '../src/core/knowledge/search.js';
+import { getKnowledgeBase } from '../src/core/knowledge/search.js';
 import { loadConfig } from '../src/core/config.js';
 
 /**
@@ -11,10 +11,11 @@ import { loadConfig } from '../src/core/config.js';
 export async function runMaintenance() {
   console.log(`\n\x1b[38;5;220mIniciando mantenimiento mensual del bot...\x1b[0m\n`);
 
-  const config = loadConfig();
+  const config = await loadConfig();
 
   // 1. Audit Knowledge Base
-  kb.reload();
+  const kb = await getKnowledgeBase();
+  await kb.reloadFromFs();
   const docs = kb.listDocuments();
   console.log(`  \x1b[32m✓\x1b[0m Base de conocimiento: ${docs.length} documentos activos, ${kb.chunks.length} fragmentos indexados.`);
 
