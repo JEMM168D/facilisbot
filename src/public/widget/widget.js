@@ -143,8 +143,50 @@
     }
   }
 
-  sendBtn.addEventListener('click', sendMessage);
-  input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') sendMessage();
-  });
-})();
+    sendBtn.addEventListener('click', sendMessage);
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') sendMessage();
+    });
+
+    // Live background sync for incoming human and bot replies
+    let widgetSyncInterval = null;
+    async function syncWidgetMessages() {
+      try {
+        const res = await fetch(`${serverOrigin}/api/chat/messages?sessionId=${encodeURIComponent(sessionId)}&botId=${encodeURIComponent(botId)}`);
+        const data = await res.json();
+        const serverMessages = data.messages || [];
+
+        if (serverMessages.length > 0 && serverMessages.length > savedHistory.length) {
+          // Re-render chat body with fresh messages
+          body.querySelectorAll('.yunque-msg:not(#yunque-welcome-msg)').forEach(el => el.remove());
+          savedHistory.length = 0;
+
+          serverMessages.forEach(m => {
+            const isUser = m.role === 'user';
+            const msgEl = document.createElement('div');
+            msgEl.className = `yunque-msg ${isUser ? 'yunque-msg-user' : 'yunque-msg-bot'}`;
+            msgEl.textContent = m.content;
+            body.insertBefore(msgEl, typing);
+            savedHistory.push({ role: m.role, text: m.content, time: m.created_at || Date.now() });
+          });
+
+          body.scrollTop = body.scrollHeight;
+          try { localStorage.setItem(historyKey, JSON.stringify(savedHistory)); } catch(e) {}
+        }
+      } catch (e) {}
+    }
+
+    // Start sync when widget opens
+    btn.addEventListener('click', () => {
+      if (win.classList.contains('open')) {
+        syncWidgetMessages();
+        if (!widgetSyncInterval) widgetSyncInterval = setInterval(syncWidgetMessages, 2500);
+      } else {
+        if (widgetSyncInterval) { clearInterval(widgetSyncInterval); widgetSyncInterval = null; }
+      }
+    });
+
+    // Initial sync
+    syncWidgetMessages();
+    widgetSyncInterval = setInterval(syncWidgetMessages, 3000);
+  })();

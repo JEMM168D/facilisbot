@@ -113,6 +113,15 @@
       </div>
     </div>
 
+    <!-- Top Escalation Alert Banner -->
+    <div id="liveHumanEscalationBanner" style="display:none; background:rgba(239, 68, 68, 0.15); border:1px solid #ef4444; color:#fca5a5; padding:10px 18px; border-radius:8px; margin:12px 32px 0; align-items:center; justify-content:space-between; font-size:12px;">
+      <div style="display:flex; align-items:center; gap:8px;">
+        <span style="font-size:16px;">🚨</span>
+        <span id="liveEscalationBannerText"><strong>¡Atención!</strong> Un cliente ha solicitado atención humana.</span>
+      </div>
+      <button class="btn btn-primary btn-sm" id="liveEscalationBannerBtn" onclick="navigateTo('inbox')">👉 Atender Ahora</button>
+    </div>
+
     <!-- ======================================================== -->
     <!-- 1. VIEW FLUJO (Agent Flow Visualizer)                    -->
     <!-- ======================================================== -->
@@ -587,6 +596,12 @@
             <div>
               <strong id="activeChatUser" style="color:var(--text-main);">Selecciona una conversación</strong>
               <div style="font-size:11px; color:var(--text-dim);" id="activeChatMeta">Canal: -</div>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span id="chatStatusPill" class="badge-pro" style="display:none;"></span>
+              <button id="btnReactivateBot" class="btn btn-primary btn-sm" style="display:none;" onclick="reactivateBotForCurrentChat()">🤖 Reactivar Bot</button>
+              <button id="btnPauseBot" class="btn btn-secondary btn-sm" style="display:none;" onclick="pauseBotForCurrentChat()">⏸️ Pausar Bot</button>
+              <button id="btnResolveTicket" class="btn btn-secondary btn-sm" style="display:none;" onclick="resolveTicketForCurrentChat()">✅ Resolver Ticket</button>
             </div>
           </div>
           <div class="chat-messages" id="chatMessagesBody">

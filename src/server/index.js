@@ -116,6 +116,15 @@ export function createServer(customConfig = null, customStorage = null) {
         return sendJson(res, 200, response);
       }
 
+      if (pathname === '/api/chat/messages' && req.method === 'GET') {
+        const sessionId = url.searchParams.get('sessionId') || url.searchParams.get('session_id');
+        const targetBotId = url.searchParams.get('botId') || url.searchParams.get('bot_id') || reqBotId || 'default';
+        if (!sessionId) return sendJson(res, 200, { messages: [] });
+        const conv = await storage.getOrCreateConversation('web', sessionId, 'Visitante Web', targetBotId);
+        const messages = await storage.getMessages(conv.id, 50);
+        return sendJson(res, 200, { conversation: conv, messages });
+      }
+
       // ── TEST CHAT (Simulator) ──
       if (pathname === '/api/test/chat' && req.method === 'POST') {
         const body = await parseJsonBody(req);
@@ -171,18 +180,21 @@ export function createServer(customConfig = null, customStorage = null) {
       if (pathname.match(/\/api\/conversations\/[^/]+\/status/) && req.method === 'POST') {
         const convId = pathname.split('/')[3];
         const body = await parseJsonBody(req);
-        const updated = await storage.updateConversationStatus(convId, body.status);
+        await storage.updateConversationStatus(convId, body.status || 'active');
+        const updated = await storage.getConversation(convId);
         return sendJson(res, 200, { success: true, conversation: updated });
       }
 
       if (pathname.match(/\/api\/conversations\/[^/]+\/reply/) && req.method === 'POST') {
         const convId = pathname.split('/')[3];
         const body = await parseJsonBody(req);
+        const conv = await storage.getConversation(convId);
+        const botId = conv?.bot_id || conv?.botId || reqBotId;
         const msg = await storage.addMessage({
           conversationId: convId,
-          botId: reqBotId,
+          botId,
           role: 'assistant',
-          content: `[Asesor Humano]: ${body.text}`
+          content: body.text || ''
         });
         return sendJson(res, 200, { success: true, message: msg });
       }

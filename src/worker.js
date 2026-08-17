@@ -150,6 +150,15 @@ export default {
         return json(response);
       }
 
+      if (pathname === '/api/chat/messages' && request.method === 'GET') {
+        const sessionId = url.searchParams.get('sessionId') || url.searchParams.get('session_id');
+        const targetBotId = url.searchParams.get('botId') || url.searchParams.get('bot_id') || reqBotId || 'default';
+        if (!sessionId) return json({ messages: [] });
+        const conv = await storage.getOrCreateConversation('web', sessionId, 'Visitante Web', targetBotId);
+        const messages = await storage.getMessages(conv.id, 50);
+        return json({ conversation: conv, messages });
+      }
+
       // ══════════════════════════════════════════════════
       // SIMULATOR / TEST CHAT
       // ══════════════════════════════════════════════════
@@ -257,11 +266,12 @@ export default {
         return json({ conversation, messages });
       }
 
-      // Update conversation status
+      // Update conversation status (Reactivate / Escalate / Resolve)
       if (pathname.match(/^\/api\/conversations\/[^/]+\/status$/) && request.method === 'POST') {
         const convId = pathname.split('/')[3];
         const body = await request.json();
-        const updated = await storage.updateConversationStatus(convId, body.status);
+        await storage.updateConversationStatus(convId, body.status || 'active');
+        const updated = await storage.getConversation(convId);
         return json({ success: true, conversation: updated });
       }
 
@@ -271,22 +281,39 @@ export default {
         const body = await request.json();
         const conv = await storage.getConversation(convId);
         const botId = conv?.bot_id || conv?.botId || reqBotId;
+        const replyText = body.text || '';
 
         const msg = await storage.addMessage({
           conversationId: convId,
           botId,
           role: 'assistant',
-          content: `[Asesor Humano]: ${body.text}`
+          content: replyText
         });
+
+        const botCfg = await loadConfig(botId, storage);
 
         // Outbound messaging to Telegram if applicable
         if (conv && (conv.channel === 'telegram')) {
-          const botCfg = await loadConfig(botId, storage);
-          if (botCfg.channels?.telegram?.botToken) {
+          if (botCfg.channels?.telegram?.botToken || env.TELEGRAM_BOT_TOKEN) {
+            const token = botCfg.channels?.telegram?.botToken || env.TELEGRAM_BOT_TOKEN;
             ctx.waitUntil(TelegramHandler.sendMessage({
-              botToken: botCfg.channels.telegram.botToken,
+              botToken: token,
               chatId: conv.user_id || conv.userId,
-              text: body.text
+              text: replyText
+            }));
+          }
+        }
+
+        // Outbound messaging to WhatsApp if applicable
+        if (conv && (conv.channel === 'whatsapp')) {
+          const phoneId = botCfg.channels?.whatsapp?.phoneNumberId || env.WHATSAPP_PHONE_NUMBER_ID;
+          const token = botCfg.channels?.whatsapp?.accessToken || env.WHATSAPP_ACCESS_TOKEN;
+          if (phoneId && token) {
+            ctx.waitUntil(WhatsAppHandler.sendCloudApiMessage({
+              phoneNumberId: phoneId,
+              accessToken: token,
+              to: conv.user_id || conv.userId,
+              text: replyText
             }));
           }
         }

@@ -57,7 +57,15 @@ export class BotEngine {
       content: text.trim()
     });
 
-    // 3. If conversation is escalated to human, return notification unless human resolved it
+    // If conversation was marked resolved, resume active status on new message
+    if (conversation.status === 'resolved') {
+      conversation.status = 'active';
+      if (this.storage && typeof this.storage.updateConversationStatus === 'function') {
+        await this.storage.updateConversationStatus(conversation.id, 'active');
+      }
+    }
+
+    // 3. If conversation is escalated to human, return notification unless human resolved/reactivated it
     if (conversation.status === 'escalated') {
       const escalationNotice = this.config.bot?.escalationMessage ||
         'Tu conversación está siendo atendida por un asesor humano. En breve te responderá directamente.';

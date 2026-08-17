@@ -343,6 +343,109 @@ async function loadConversations(silent = false) {
   }
 }
 
+function playAlertChime() {
+  try {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return;
+    const ctx = new AudioContext();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
+    osc.frequency.setValueAtTime(880, ctx.currentTime + 0.12); // A5
+    gain.gain.setValueAtTime(0.25, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.45);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.45);
+  } catch (e) {}
+}
+
+let lastSeenEscalatedCount = 0;
+
+function updateChatStatusControls(conversation) {
+  const statusPill = document.getElementById('chatStatusPill');
+  const btnReactivate = document.getElementById('btnReactivateBot');
+  const btnPause = document.getElementById('btnPauseBot');
+  const btnResolve = document.getElementById('btnResolveTicket');
+
+  if (!statusPill || !btnReactivate || !btnPause || !btnResolve) return;
+
+  const status = conversation?.status || 'active';
+
+  if (status === 'escalated') {
+    statusPill.textContent = '⚠️ Asesor Humano (Bot Pausado)';
+    statusPill.style.borderColor = 'rgba(239, 68, 68, 0.5)';
+    statusPill.style.color = 'var(--accent-red)';
+    statusPill.style.display = 'inline-block';
+    btnReactivate.style.display = 'inline-block';
+    btnResolve.style.display = 'inline-block';
+    btnPause.style.display = 'none';
+  } else if (status === 'resolved') {
+    statusPill.textContent = '✅ Resuelto (Bot Activo)';
+    statusPill.style.borderColor = 'rgba(158, 145, 133, 0.4)';
+    statusPill.style.color = 'var(--text-muted)';
+    statusPill.style.display = 'inline-block';
+    btnReactivate.style.display = 'inline-block';
+    btnResolve.style.display = 'none';
+    btnPause.style.display = 'inline-block';
+  } else {
+    statusPill.textContent = '⚡ Bot Activo';
+    statusPill.style.borderColor = 'rgba(34, 197, 94, 0.4)';
+    statusPill.style.color = 'var(--accent-green)';
+    statusPill.style.display = 'inline-block';
+    btnPause.style.display = 'inline-block';
+    btnReactivate.style.display = 'none';
+    btnResolve.style.display = 'none';
+  }
+}
+
+async function reactivateBotForCurrentChat() {
+  if (!activeConversationId) return;
+  try {
+    await fetch(`/api/conversations/${activeConversationId}/status`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'active' })
+    });
+    showToast('🤖 Bot reactivado: contestará automáticamente los mensajes de esta conversación');
+    await selectConversation(activeConversationId);
+  } catch (e) {
+    console.error('Error reactivando bot:', e);
+  }
+}
+
+async function pauseBotForCurrentChat() {
+  if (!activeConversationId) return;
+  try {
+    await fetch(`/api/conversations/${activeConversationId}/status`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'escalated' })
+    });
+    showToast('⏸️ Bot pausado en esta conversación para atención manual');
+    await selectConversation(activeConversationId);
+  } catch (e) {
+    console.error('Error pausando bot:', e);
+  }
+}
+
+async function resolveTicketForCurrentChat() {
+  if (!activeConversationId) return;
+  try {
+    await fetch(`/api/conversations/${activeConversationId}/status`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'resolved' })
+    });
+    showToast('✅ Ticket resuelto y bot reanudado');
+    await selectConversation(activeConversationId);
+  } catch (e) {
+    console.error('Error resolviendo ticket:', e);
+  }
+}
+
 function scrollChatToBottom(smooth = false) {
   const msgContainer = document.getElementById('chatMessagesBody');
   if (!msgContainer) return;
@@ -370,6 +473,7 @@ async function selectConversation(convId) {
     if (conversation) {
       document.getElementById('activeChatUser').textContent = conversation.user_name || conversation.user_id || 'Usuario';
       document.getElementById('activeChatMeta').textContent = `Canal: ${(conversation.channel || 'web').toUpperCase()} · ID: ${conversation.id}`;
+      updateChatStatusControls(conversation);
     }
 
     const msgContainer = document.getElementById('chatMessagesBody');
@@ -400,6 +504,28 @@ async function refreshInboxSilently() {
     const data = await res.json();
     const convs = Array.isArray(data) ? data : data.conversations || [];
     
+    // Check for escalated tickets
+    const escalatedConvs = convs.filter(c => c.status === 'escalated');
+    const banner = document.getElementById('liveHumanEscalationBanner');
+    const bannerText = document.getElementById('liveEscalationBannerText');
+
+    if (escalatedConvs.length > 0) {
+      if (banner) {
+        banner.style.display = 'flex';
+        if (bannerText) {
+          const names = escalatedConvs.map(c => c.user_name || 'Usuario').join(', ');
+          bannerText.innerHTML = `<strong>🚨 ¡Atención requerida!</strong> Hay <strong>${escalatedConvs.length}</strong> conversación(es) solicitando asesor humano: <em>${escapeHtml(names)}</em>`;
+        }
+      }
+      if (escalatedConvs.length > lastSeenEscalatedCount) {
+        playAlertChime();
+        showToast(`📞 ¡Nueva solicitud de asesor humano de ${escalatedConvs[0].user_name || 'un cliente'}!`);
+      }
+    } else {
+      if (banner) banner.style.display = 'none';
+    }
+    lastSeenEscalatedCount = escalatedConvs.length;
+
     if (convs.length > 0) {
       const listEl = document.getElementById('conversationsList');
       listEl.innerHTML = '';
@@ -410,11 +536,13 @@ async function refreshInboxSilently() {
         item.onclick = () => selectConversation(c.id);
 
         const channelEmoji = c.channel === 'whatsapp' ? '💬' : c.channel === 'telegram' ? '✈️' : '🌐';
+        const isEscalated = c.status === 'escalated';
+        const statusBadge = isEscalated ? '<span class="badge-pro" style="color:var(--accent-red); margin-left:6px; font-size:8px;">⚠️ ESCALADO</span>' : '';
         const timeStr = new Date(c.updated_at || c.created_at || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
         item.innerHTML = `
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-            <strong style="font-size:12px; color:var(--text-main);">${channelEmoji} ${escapeHtml(c.user_name || c.user_id || 'Usuario')}</strong>
+            <strong style="font-size:12px; color:var(--text-main);">${channelEmoji} ${escapeHtml(c.user_name || c.user_id || 'Usuario')}${statusBadge}</strong>
             <span style="font-size:10px; color:var(--text-dim); font-family:var(--font-mono);">${timeStr}</span>
           </div>
           <div style="font-size:11px; color:var(--text-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
@@ -429,6 +557,8 @@ async function refreshInboxSilently() {
       const msgRes = await fetch(`/api/conversations/${encodeURIComponent(activeConversationId)}/messages`);
       const msgData = await msgRes.json();
       const { conversation, messages = [] } = msgData;
+
+      if (conversation) updateChatStatusControls(conversation);
 
       if (messages.length !== lastKnownMessagesCount) {
         lastKnownMessagesCount = messages.length;
@@ -466,8 +596,8 @@ async function sendHumanReply() {
       body: JSON.stringify({ text })
     });
     input.value = '';
-    selectConversation(activeConversationId);
-    showToast('Mensaje enviado como asesor humano');
+    await selectConversation(activeConversationId);
+    showToast('✉️ Mensaje entregado al usuario');
   } catch (err) {
     console.error('Error enviando mensaje humano:', err);
   }
