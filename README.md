@@ -124,13 +124,24 @@ node skills/clonar.js https://sitio-cliente.com
 
 ---
 
-## 🧪 Pruebas de Integración
+---
 
-Para ejecutar la suite de pruebas automatizadas:
+## 🧪 Pruebas de Integración y Despliegue
+
 ```bash
+# Ejecutar suite de pruebas de integración completa
 npm test
-# o directamente: node test/verify.js
+
+# Desplegar en Cloudflare Workers y D1
+npx wrangler deploy
 ```
+
+---
+
+## 📖 Documentación para Desarrolladores
+
+Para conocer a fondo la arquitectura interna, el flujo de datos de los 12 superpoderes, la estructura multi-inquilino de base de datos D1 y cómo extender el sistema, consulta:
+👉 **[Guía de Arquitectura Técnica y Developer Handoff (ARCHITECTURE.md)](./ARCHITECTURE.md)**
 
 ---
 
