@@ -98,6 +98,93 @@ export class UniversalLlmEngine {
       });
     }
 
+    // ══════════════════════════════════════════════════════════════
+    // GUARANTEED SUPERPOWERS TRIGGER VERIFIER (Zero-Miss Fallback)
+    // ══════════════════════════════════════════════════════════════
+    const lastUserMsg = messages[messages.length - 1]?.content || '';
+    const cleanUserText = (lastUserMsg || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+    // Check if tools were executed natively by LLM
+    const hasEscalate = allExecutedTools.some(t => t.name === 'escalate_to_human');
+    const hasLead = allExecutedTools.some(t => t.name === 'capture_lead');
+    const hasVigilante = allExecutedTools.some(t => t.name === 'alert_vigilante');
+
+    // 1. Escalate to human: user explicitly wants a person/human
+    const wantsHuman = (
+      cleanUserText.includes('humano') || cleanUserText.includes('asesor') || 
+      cleanUserText.includes('persona') || cleanUserText.includes('alguien') ||
+      cleanUserText.includes('supervisor') || cleanUserText.includes('gerente') ||
+      cleanUserText.includes('hablar con') || cleanUserText.includes('comunicarme')
+    );
+
+    if (wantsHuman && !hasEscalate) {
+      const result = await executeTool('escalate_to_human', {
+        reason: 'Solicitud expresa de atención humana',
+        customerSummary: lastUserMsg,
+        urgency: 'media'
+      }, conversationContext);
+      allExecutedTools.push({
+        name: 'escalate_to_human',
+        args: { reason: 'Solicitud expresa de atención humana', customerSummary: lastUserMsg, urgency: 'media' },
+        result
+      });
+    }
+
+    // 2. Capture lead: user provides phone/email/contact info
+    const hasContact = (
+      cleanUserText.includes('mi nombre') || cleanUserText.includes('me llamo') || cleanUserText.includes('soy ') ||
+      cleanUserText.includes('whats') || cleanUserText.includes('telefono') || cleanUserText.includes('celular') ||
+      cleanUserText.includes('correo') || cleanUserText.includes('email') || cleanUserText.includes('@') ||
+      /(\+?\d[\d\s-]{7,}\d)/.test(lastUserMsg)
+    );
+
+    if (hasContact && !hasLead && !cleanUserText.includes('pagar')) {
+      const emailMatch = lastUserMsg.match(/[\w.-]+@[\w.-]+\.[A-Za-z]{2,}/);
+      const phoneMatch = lastUserMsg.match(/(\+?\d[\d\s-]{7,}\d)/);
+      const nameMatch = lastUserMsg.match(/(?:me llamo|mi nombre es|soy)\s+([A-Za-zÀ-ÿ\s]+?)(?:,|\.|\s+mi|\s+y|\s+cel|\s+tel|\s+correo|\s+whats|$)/i);
+      const budgetMatch = lastUserMsg.match(/(?:presupuesto(?: de)?|budget)\s*(?:de\s*)?([$\d,.\s]+(?:usd|mxn|dolares|pesos)?)/i);
+
+      const extractedName = nameMatch ? nameMatch[1].trim() : (conversationContext.userName || 'Prospecto Web');
+      const extractedPhone = phoneMatch ? phoneMatch[0].trim() : '';
+      const extractedEmail = emailMatch ? emailMatch[0].trim() : '';
+      const extractedBudget = budgetMatch ? budgetMatch[1].trim() : '';
+
+      const result = await executeTool('capture_lead', {
+        name: extractedName,
+        phone: extractedPhone,
+        email: extractedEmail,
+        interest: lastUserMsg,
+        budget: extractedBudget
+      }, conversationContext);
+
+      allExecutedTools.push({
+        name: 'capture_lead',
+        args: { name: extractedName, phone: extractedPhone, email: extractedEmail, interest: lastUserMsg, budget: extractedBudget },
+        result
+      });
+    }
+
+    // 3. Vigilante: Angry user or complaint
+    const isAngry = (
+      cleanUserText.includes('enojad') || cleanUserText.includes('molest') || cleanUserText.includes('inconform') ||
+      cleanUserText.includes('pesim') || cleanUserText.includes('terrible') || cleanUserText.includes('fraude') ||
+      cleanUserText.includes('reclamo') || cleanUserText.includes('queja') || cleanUserText.includes('estafa') ||
+      cleanUserText.includes('furios') || cleanUserText.includes('demora') || cleanUserText.includes('mal servicio')
+    );
+
+    if (isAngry && !hasVigilante) {
+      const result = await executeTool('alert_vigilante', {
+        reason: 'Cliente molesto o queja detectada',
+        sentimentScore: 'critico',
+        summary: lastUserMsg
+      }, conversationContext);
+      allExecutedTools.push({
+        name: 'alert_vigilante',
+        args: { reason: 'Cliente molesto', sentimentScore: 'critico', summary: lastUserMsg },
+        result
+      });
+    }
+
     // Record token usage
     totalTokensAccumulated += (response.tokensUsed || 150);
     if (this.storage && typeof this.storage.recordLlmUsage === 'function') {

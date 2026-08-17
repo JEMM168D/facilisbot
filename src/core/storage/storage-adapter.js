@@ -195,8 +195,8 @@ class CloudflareStorageAdapter {
     `).bind(id, conversationId, cleanBotId, cleanRole, cleanContent, toolCallsStr, cleanTokens).run();
     
     await this.db.prepare(
-      "UPDATE conversations SET updated_at = datetime('now') WHERE id = ?"
-    ).bind(conversationId).run();
+      "UPDATE conversations SET updated_at = datetime('now'), last_message = ? WHERE id = ?"
+    ).bind(cleanContent, conversationId).run();
     
     return {
       id,
@@ -657,7 +657,10 @@ class LocalStorageAdapter {
     this.memoryDb.messages.push(msg);
     
     const conv = this.memoryDb.conversations.find(c => c.id === conversationId);
-    if (conv) conv.updated_at = new Date().toISOString();
+    if (conv) {
+      conv.updated_at = new Date().toISOString();
+      conv.last_message = content;
+    }
     
     return { ...msg };
   }

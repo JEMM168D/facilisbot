@@ -291,6 +291,7 @@ async function loadConversations() {
 
     convs.forEach(c => {
       const item = document.createElement('div');
+      item.dataset.convId = c.id;
       item.className = `conv-item ${c.id === activeConversationId ? 'active' : ''}`;
       item.onclick = () => selectConversation(c.id);
 
@@ -321,10 +322,12 @@ async function loadConversations() {
 
 async function selectConversation(convId) {
   activeConversationId = convId;
-  document.querySelectorAll('.conv-item').forEach(i => i.classList.remove('active'));
+  document.querySelectorAll('.conv-item').forEach(i => {
+    i.classList.toggle('active', i.dataset.convId === convId);
+  });
 
   try {
-    const res = await fetch(`/api/conversations/${convId}/messages`);
+    const res = await fetch(`/api/conversations/${encodeURIComponent(convId)}/messages`);
     const data = await res.json();
     const { conversation, messages } = data;
 
