@@ -1,9 +1,10 @@
 /**
- * FacilisBot — Web Chat Widget
+ * FacilisBot — Web Chat Widget v2.0 (Real-time & Multi-Tenant)
  */
 (function () {
   const currentScript = document.currentScript || document.querySelector('script[src*="widget.js"]');
   const serverOrigin = currentScript ? new URL(currentScript.src).origin : window.location.origin;
+  const botId = currentScript ? (currentScript.getAttribute('data-bot-id') || currentScript.dataset.botId || 'default') : 'default';
 
   // Inject CSS
   const link = document.createElement('link');
@@ -12,11 +13,13 @@
   document.head.appendChild(link);
 
   // Generate or retrieve persistent Session ID
-  let sessionId = localStorage.getItem('yunque_widget_session');
+  let sessionId = localStorage.getItem('facilisbot_widget_session_' + botId);
   if (!sessionId) {
     sessionId = 'web_' + Math.random().toString(36).substring(2, 10);
-    localStorage.setItem('yunque_widget_session', sessionId);
+    localStorage.setItem('facilisbot_widget_session_' + botId, sessionId);
   }
+
+  let savedUserName = localStorage.getItem('facilisbot_widget_username_' + botId) || 'Visitante Web';
 
   // Create Container
   const container = document.createElement('div');
@@ -35,7 +38,7 @@
         <div class="yunque-msg yunque-msg-bot" id="yunque-welcome-msg">
           ¡Hola! 👋 ¿En qué te podemos ayudar hoy?
         </div>
-        <div class="yunque-typing" id="yunque-typing">
+        <div class="yunque-typing" id="yunque-typing" style="display:none;">
           <span class="yunque-dot"></span>
           <span class="yunque-dot"></span>
           <span class="yunque-dot"></span>
@@ -57,6 +60,23 @@
   const body = document.getElementById('yunque-chat-body');
   const typing = document.getElementById('yunque-typing');
 
+  // Load chat history from localStorage
+  const historyKey = 'facilisbot_widget_history_' + botId;
+  const savedHistory = JSON.parse(localStorage.getItem(historyKey) || '[]');
+  savedHistory.forEach(m => {
+    const msgEl = document.createElement('div');
+    msgEl.className = `yunque-msg ${m.role === 'user' ? 'yunque-msg-user' : 'yunque-msg-bot'}`;
+    msgEl.textContent = m.text;
+    body.insertBefore(msgEl, typing);
+  });
+  if (savedHistory.length > 0) body.scrollTop = body.scrollHeight;
+
+  function appendToHistory(role, text) {
+    savedHistory.push({ role, text, time: Date.now() });
+    if (savedHistory.length > 30) savedHistory.shift();
+    try { localStorage.setItem(historyKey, JSON.stringify(savedHistory)); } catch(e) {}
+  }
+
   // Toggle open
   btn.addEventListener('click', () => {
     win.classList.toggle('open');
@@ -73,12 +93,20 @@
 
     input.value = '';
 
+    // Check if user mentions name
+    const nameMatch = text.match(/(?:me llamo|mi nombre es|soy)\s+([A-Za-zÀ-ÿ\s]{2,30}?)(?:,|\.|\s+mi|\s+y|\s+cel|\s+tel|\s+correo|\s+whats|$)/i);
+    if (nameMatch && nameMatch[1].trim().length > 1) {
+      savedUserName = nameMatch[1].trim();
+      localStorage.setItem('facilisbot_widget_username_' + botId, savedUserName);
+    }
+
     // Add user bubble
     const userMsg = document.createElement('div');
     userMsg.className = 'yunque-msg yunque-msg-user';
     userMsg.textContent = text;
     body.insertBefore(userMsg, typing);
     body.scrollTop = body.scrollHeight;
+    appendToHistory('user', text);
 
     // Show typing
     typing.style.display = 'flex';
@@ -91,7 +119,8 @@
         body: JSON.stringify({
           message: text,
           sessionId,
-          userName: 'Visitante Web'
+          botId,
+          userName: savedUserName
         })
       });
       const data = await res.json();
@@ -104,6 +133,7 @@
       botMsg.textContent = data.reply || 'Gracias por tu mensaje.';
       body.insertBefore(botMsg, typing);
       body.scrollTop = body.scrollHeight;
+      appendToHistory('assistant', data.reply || 'Gracias por tu mensaje.');
     } catch (err) {
       typing.style.display = 'none';
       const errMsg = document.createElement('div');

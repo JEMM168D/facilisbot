@@ -5,6 +5,9 @@ let currentBotId = 'default';
 let allLeads = [];
 let allConversations = [];
 let userRole = 'client';
+let currentActiveTab = 'flujo';
+let liveSyncInterval = null;
+let lastKnownMessagesCount = 0;
 
 document.addEventListener('DOMContentLoaded', async () => {
   setupWidgetSnippet();
@@ -52,6 +55,7 @@ async function attemptLogin() {
       await loadOverview();
       await loadConfig();
       setupWidgetSnippet();
+      startLiveSync();
     } else {
       errorEl.textContent = data.error || 'Código de acceso inválido';
       errorEl.style.display = 'block';
@@ -63,6 +67,7 @@ async function attemptLogin() {
 }
 
 function logout() {
+  if (liveSyncInterval) clearInterval(liveSyncInterval);
   sessionStorage.removeItem('facilisbot_access_code');
   document.getElementById('loginOverlay').style.display = 'flex';
   document.getElementById('appContainer').style.display = 'none';
@@ -71,6 +76,7 @@ function logout() {
 
 // ================= NAVIGATION =================
 function navigateTo(tab) {
+  currentActiveTab = tab;
   document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
   document.querySelectorAll('.view-section').forEach(v => v.classList.remove('active'));
 
@@ -106,6 +112,22 @@ function navigateTo(tab) {
   if (tab === 'kb') loadKbFiles();
   if (tab === 'settings') loadConfig();
   if (tab === 'conexiones') setupWidgetSnippet();
+}
+
+function startLiveSync() {
+  if (liveSyncInterval) clearInterval(liveSyncInterval);
+  liveSyncInterval = setInterval(async () => {
+    const container = document.getElementById('appContainer');
+    if (!container || container.style.display === 'none') return;
+
+    if (currentActiveTab === 'inbox') {
+      await refreshInboxSilently();
+    } else if (currentActiveTab === 'leads') {
+      await loadLeads(true);
+    } else if (currentActiveTab === 'tickets') {
+      await loadTickets(true);
+    }
+  }, 2500);
 }
 
 // ================= BOT SWITCHER =================
@@ -273,15 +295,13 @@ function showNodeDetails(nodeType) {
 }
 
 // ================= 2. CONVERSATIONS & INBOX =================
-async function loadConversations() {
+async function loadConversations(silent = false) {
   try {
     const url = `/api/conversations?bot_id=${encodeURIComponent(currentBotId)}`;
     const res = await fetch(url);
     allConversations = await res.json();
 
     const listEl = document.getElementById('conversationsList');
-    listEl.innerHTML = '';
-
     const convs = Array.isArray(allConversations) ? allConversations : allConversations.conversations || [];
 
     if (convs.length === 0) {
@@ -289,6 +309,7 @@ async function loadConversations() {
       return;
     }
 
+    listEl.innerHTML = '';
     convs.forEach(c => {
       const item = document.createElement('div');
       item.dataset.convId = c.id;
@@ -310,10 +331,12 @@ async function loadConversations() {
       listEl.appendChild(item);
     });
 
-    if (activeConversationId) {
-      selectConversation(activeConversationId);
-    } else if (convs[0]) {
-      selectConversation(convs[0].id);
+    if (!silent) {
+      if (activeConversationId) {
+        selectConversation(activeConversationId);
+      } else if (convs[0]) {
+        selectConversation(convs[0].id);
+      }
     }
   } catch (err) {
     console.error('Error cargando conversaciones:', err);
@@ -329,7 +352,9 @@ async function selectConversation(convId) {
   try {
     const res = await fetch(`/api/conversations/${encodeURIComponent(convId)}/messages`);
     const data = await res.json();
-    const { conversation, messages } = data;
+    const { conversation, messages = [] } = data;
+
+    lastKnownMessagesCount = messages.length;
 
     if (conversation) {
       document.getElementById('activeChatUser').textContent = conversation.user_name || conversation.user_id || 'Usuario';
@@ -339,7 +364,7 @@ async function selectConversation(convId) {
     const msgContainer = document.getElementById('chatMessagesBody');
     msgContainer.innerHTML = '';
 
-    (messages || []).forEach(m => {
+    messages.forEach(m => {
       const bubble = document.createElement('div');
       bubble.className = `msg-bubble ${m.role === 'user' ? 'msg-user' : 'msg-bot'}`;
       bubble.innerHTML = `
@@ -355,6 +380,67 @@ async function selectConversation(convId) {
   } catch (err) {
     console.error('Error seleccionando conversación:', err);
   }
+}
+
+async function refreshInboxSilently() {
+  try {
+    const url = `/api/conversations?bot_id=${encodeURIComponent(currentBotId)}`;
+    const res = await fetch(url);
+    const data = await res.json();
+    const convs = Array.isArray(data) ? data : data.conversations || [];
+    
+    if (convs.length > 0) {
+      const listEl = document.getElementById('conversationsList');
+      listEl.innerHTML = '';
+      convs.forEach(c => {
+        const item = document.createElement('div');
+        item.dataset.convId = c.id;
+        item.className = `conv-item ${c.id === activeConversationId ? 'active' : ''}`;
+        item.onclick = () => selectConversation(c.id);
+
+        const channelEmoji = c.channel === 'whatsapp' ? '💬' : c.channel === 'telegram' ? '✈️' : '🌐';
+        const timeStr = new Date(c.updated_at || c.created_at || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+        item.innerHTML = `
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+            <strong style="font-size:12px; color:var(--text-main);">${channelEmoji} ${escapeHtml(c.user_name || c.user_id || 'Usuario')}</strong>
+            <span style="font-size:10px; color:var(--text-dim); font-family:var(--font-mono);">${timeStr}</span>
+          </div>
+          <div style="font-size:11px; color:var(--text-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+            ${escapeHtml(c.last_message || 'Conversación activa')}
+          </div>
+        `;
+        listEl.appendChild(item);
+      });
+    }
+
+    if (activeConversationId) {
+      const msgRes = await fetch(`/api/conversations/${encodeURIComponent(activeConversationId)}/messages`);
+      const msgData = await msgRes.json();
+      const { conversation, messages = [] } = msgData;
+
+      if (messages.length !== lastKnownMessagesCount) {
+        lastKnownMessagesCount = messages.length;
+        const msgContainer = document.getElementById('chatMessagesBody');
+        msgContainer.innerHTML = '';
+
+        messages.forEach(m => {
+          const bubble = document.createElement('div');
+          bubble.className = `msg-bubble ${m.role === 'user' ? 'msg-user' : 'msg-bot'}`;
+          bubble.innerHTML = `
+            <div>${escapeHtml(m.content)}</div>
+            <div style="font-size:9px; opacity:0.6; text-align:right; margin-top:4px; font-family:var(--font-mono);">
+              ${new Date(m.created_at || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </div>
+          `;
+          msgContainer.appendChild(bubble);
+        });
+        msgContainer.scrollTop = msgContainer.scrollHeight;
+      }
+    } else if (convs.length > 0 && !activeConversationId) {
+      selectConversation(convs[0].id);
+    }
+  } catch (err) {}
 }
 
 async function sendHumanReply() {
@@ -377,7 +463,7 @@ async function sendHumanReply() {
 }
 
 // ================= 3. LEADS =================
-async function loadLeads() {
+async function loadLeads(silent = false) {
   try {
     const status = document.getElementById('filterLeadStatus')?.value || '';
     const search = document.getElementById('searchLeadsInput')?.value || '';
@@ -388,13 +474,14 @@ async function loadLeads() {
     allLeads = Array.isArray(data) ? data : data.leads || [];
 
     const tbody = document.getElementById('leadsTableBody');
-    tbody.innerHTML = '';
+    if (!tbody) return;
 
     if (allLeads.length === 0) {
       tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--text-dim); padding:24px;">No se encontraron prospectos</td></tr>`;
       return;
     }
 
+    tbody.innerHTML = '';
     allLeads.forEach(l => {
       const tr = document.createElement('tr');
       tr.innerHTML = `
@@ -408,25 +495,26 @@ async function loadLeads() {
       tbody.appendChild(tr);
     });
   } catch (err) {
-    console.error('Error cargando leads:', err);
+    if (!silent) console.error('Error cargando leads:', err);
   }
 }
 
 // ================= 4. TICKETS =================
-async function loadTickets() {
+async function loadTickets(silent = false) {
   try {
     const res = await fetch(`/api/conversations?status=escalated&bot_id=${encodeURIComponent(currentBotId)}`);
     const data = await res.json();
     const tickets = Array.isArray(data) ? data : data.conversations || [];
 
     const tbody = document.getElementById('ticketsTableBody');
-    tbody.innerHTML = '';
+    if (!tbody) return;
 
     if (tickets.length === 0) {
       tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--text-dim); padding:24px;">No hay tickets pendientes de atención humana</td></tr>`;
       return;
     }
 
+    tbody.innerHTML = '';
     tickets.forEach(t => {
       const tr = document.createElement('tr');
       tr.innerHTML = `
@@ -442,7 +530,7 @@ async function loadTickets() {
       tbody.appendChild(tr);
     });
   } catch (err) {
-    console.error('Error cargando tickets:', err);
+    if (!silent) console.error('Error cargando tickets:', err);
   }
 }
 

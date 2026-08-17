@@ -36,9 +36,23 @@ export class BotEngine {
     // 1. Get or create conversation with botId context
     const conversation = await this.storage.getOrCreateConversation(channel, userId, userName, this.botId);
 
+    // Auto-detect user name if mentioned in text
+    let effectiveUserName = userName;
+    if (!effectiveUserName || effectiveUserName === 'Visitante Web' || effectiveUserName.startsWith('user_')) {
+      const nameMatch = text.match(/(?:me llamo|mi nombre es|soy)\s+([A-Za-zÀ-ÿ\s]{2,30}?)(?:,|\.|\s+mi|\s+y|\s+cel|\s+tel|\s+correo|\s+whats|$)/i);
+      if (nameMatch && nameMatch[1].trim().length > 1) {
+        effectiveUserName = nameMatch[1].trim();
+        conversation.user_name = effectiveUserName;
+        if (this.storage && typeof this.storage.updateConversation === 'function') {
+          await this.storage.updateConversation(conversation.id, { user_name: effectiveUserName });
+        }
+      }
+    }
+
     // 2. Save incoming user message
     await this.storage.addMessage({
       conversationId: conversation.id,
+      botId: this.botId,
       role: 'user',
       content: text.trim()
     });
